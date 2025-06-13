@@ -1,9 +1,10 @@
 import React from "react";
+import MapCityMap from "./MapCityMap";
 
 function App() {
   return (
     <div className="app">
-      <h1>Hello World!</h1>
+      <MapCityMap />
     </div>
   );
 }
