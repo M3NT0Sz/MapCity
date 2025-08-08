@@ -1,68 +1,228 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+# 🗺️ MapCity - Plataforma de Reportagem de Problemas Urbanos
 
-## Available Scripts
+MapCity é uma aplicação web/mobile desenvolvida com **React Native + Expo** que permite aos cidadãos reportar problemas urbanos de forma interativa através de um mapa. Os usuários podem marcar localizações, adicionar fotos, descrições e acompanhar o status dos problemas reportados.
 
-In the project directory, you can run:
+![MapCity Preview](https://img.shields.io/badge/Status-Em%20Desenvolvimento-yellow)
+![Platform](https://img.shields.io/badge/Platform-Web%20%7C%20iOS%20%7C%20Android-blue)
+![React Native](https://img.shields.io/badge/React%20Native-0.79.3-blue)
+![Expo](https://img.shields.io/badge/Expo-53.0.11-black)
 
-### `yarn start`
+## ✨ Funcionalidades
 
-Runs the app in the development mode.<br />
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+### 🎯 **Principais Recursos**
+- **Mapa Interativo**: Interface baseada em Leaflet/OpenStreetMap
+- **Reportagem de Problemas**: Clique no mapa para reportar problemas urbanos
+- **Múltiplas Imagens**: Adicione até 5 fotos por problema
+- **Categorização**: Tipos de problemas (Lixo, Buracos, Iluminação, Outros)
+- **Status de Resolução**: Marque problemas como resolvidos
+- **Carrossel de Imagens**: Navegue entre múltiplas fotos nos detalhes
+- **Interface Responsiva**: Funciona em web, iOS e Android
 
-The page will reload if you make edits.<br />
-You will also see any lint errors in the console.
+### 📱 **Tipos de Problemas Suportados**
+- 🗑️ **Lixo na Rua** - Acúmulo de lixo e sujeira
+- 🕳️ **Buracos** - Problemas na pavimentação
+- 💡 **Iluminação** - Problemas com iluminação pública
+- ❗ **Outros** - Demais problemas urbanos
 
-### `yarn test`
+## 🚀 Instalação e Configuração
 
-Launches the test runner in the interactive watch mode.<br />
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### 📋 **Pré-requisitos**
 
-### `yarn build`
+Certifique-se de ter instalado:
+- **Node.js** (versão 18 ou superior) - [Download](https://nodejs.org/)
+- **npm** ou **yarn** (gerenciador de pacotes)
+- **Git** - [Download](https://git-scm.com/)
 
-Builds the app for production to the `build` folder.<br />
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### 📦 **Clonando o Repositório**
 
-The build is minified and the filenames include the hashes.<br />
-Your app is ready to be deployed!
+```bash
+# Clone o repositório
+git clone https://github.com/M3NT0Sz/MapCity.git
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+# Entre no diretório
+cd MapCity
+```
 
-### `yarn eject`
+### ⚙️ **Instalação das Dependências**
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+```bash
+# Usando npm
+npm install
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+# OU usando yarn
+yarn install
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (Webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+### 🌐 **Executando o Projeto**
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+#### **Para Web (Desenvolvimento)**
+```bash
+# Inicia o servidor web na porta 8081
+npm run web
 
-## Learn More
+# Abra no navegador
+# http://localhost:8081
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+#### **Para Mobile (iOS/Android)**
+```bash
+# Inicia o servidor Expo
+npm start
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+# Opções disponíveis:
+# - Pressione 'w' para abrir no navegador
+# - Pressione 'i' para iOS Simulator
+# - Pressione 'a' para Android Emulator
+# - Escaneie o QR Code com o app Expo Go
+```
 
-### Code Splitting
+### 📱 **Testando no Dispositivo Mobile**
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/code-splitting
+1. **Instale o Expo Go**:
+   - [iOS App Store](https://apps.apple.com/app/expo-go/id982107779)
+   - [Google Play Store](https://play.google.com/store/apps/details?id=host.exp.exponent)
 
-### Analyzing the Bundle Size
+2. **Execute o projeto**:
+   ```bash
+   npm start
+   ```
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size
+3. **Escaneie o QR Code** com o app Expo Go
 
-### Making a Progressive Web App
+## 🛠️ **Stack Tecnológica**
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app
+### **Frontend**
+- **React Native** - Framework cross-platform
+- **Expo** - Plataforma de desenvolvimento
+- **Leaflet** - Biblioteca de mapas
+- **OpenStreetMap** - Dados de mapas (gratuito)
 
-### Advanced Configuration
+### **Dependências Principais**
+```json
+{
+  "expo": "^53.0.11",
+  "react": "18.3.1",
+  "react-native": "0.79.3",
+  "@react-navigation/native": "^6.0.0",
+  "leaflet": "^1.9.4",
+  "react-leaflet": "^4.0.0"
+}
+```
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/advanced-configuration
+## 📁 **Estrutura do Projeto**
 
-### Deployment
+```
+MapCity/
+├── 📁 assets/           # Ícones e imagens
+├── 📄 App.js           # Componente principal + navegação
+├── 📄 MapCityMap.js    # Componente principal do mapa
+├── 📄 index.js         # Ponto de entrada
+├── 📄 app.json         # Configurações do Expo
+├── 📄 package.json     # Dependências e scripts
+└── 📄 README.md        # Este arquivo
+```
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/deployment
+## 🎮 **Como Usar**
 
-### `yarn build` fails to minify
+### **1. Reportar um Problema**
+1. Abra a aplicação
+2. Clique em qualquer local do mapa
+3. Selecione o tipo de problema
+4. Adicione uma descrição detalhada
+5. (Opcional) Adicione até 5 fotos
+6. Clique em "Reportar Problema"
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify
+### **2. Visualizar Problemas**
+1. Clique em qualquer marcador no mapa
+2. Veja os detalhes do problema
+3. Navegue pelas fotos (se houver múltiplas)
+4. Marque como resolvido se aplicável
+
+### **3. Marcar como Resolvido**
+1. Abra os detalhes de um problema
+2. Clique em "✓ Marcar como Resolvido"
+3. O marcador ficará opaco com um ícone de check
+
+## 🔧 **Scripts Disponíveis**
+
+```bash
+# Desenvolvimento
+npm start          # Inicia Expo
+npm run web        # Apenas web
+npm run android    # Apenas Android  
+npm run ios        # Apenas iOS
+
+# Build
+npm run build      # Build para produção
+```
+
+## 🐛 **Solução de Problemas**
+
+### **Problemas Comuns**
+
+**1. Erro "Metro bundler crashed"**
+```bash
+npm start -- --reset-cache
+```
+
+**2. Problemas com dependências**
+```bash
+rm -rf node_modules
+npm install
+```
+
+**3. Erro de porta em uso**
+```bash
+# O Expo automaticamente sugerirá uma porta alternativa
+# Ou force uma porta específica:
+npm start -- --port 8082
+```
+
+**4. Mapa não carrega**
+- Verifique sua conexão com a internet
+- O mapa usa OpenStreetMap (não requer API key)
+
+## 📈 **Roadmap**
+
+### **Próximas Funcionalidades**
+- [ ] 🔐 Sistema de autenticação de usuários
+- [ ] 📊 Dashboard administrativo
+- [ ] 🔔 Notificações push
+- [ ] 📍 Geolocalização automática
+- [ ] 🌙 Modo escuro
+- [ ] 📱 App nativo (sem Expo)
+- [ ] 🗂️ Filtros por categoria/status
+- [ ] 📈 Estatísticas e relatórios
+
+## 🤝 **Contribuindo**
+
+1. **Fork** o projeto
+2. Crie sua **feature branch** (`git checkout -b feature/AmazingFeature`)
+3. **Commit** suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+4. **Push** para a branch (`git push origin feature/AmazingFeature`)
+5. Abra um **Pull Request**
+
+## 📄 **Licença**
+
+Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
+
+## 👥 **Autores**
+
+- **M3NT0Sz** - *Desenvolvedor Principal* - [@M3NT0Sz](https://github.com/M3NT0Sz)
+
+## 📞 **Suporte**
+
+Se você encontrar algum problema ou tiver sugestões:
+
+1. **Issues**: [GitHub Issues](https://github.com/M3NT0Sz/MapCity/issues)
+2. **Discussions**: [GitHub Discussions](https://github.com/M3NT0Sz/MapCity/discussions)
+
+---
+
+<div align="center">
+
+**🏙️ Feito com ❤️ para melhorar nossas cidades**
+
+[⭐ Star](https://github.com/M3NT0Sz/MapCity) • [🐛 Report Bug](https://github.com/M3NT0Sz/MapCity/issues) • [💡 Request Feature](https://github.com/M3NT0Sz/MapCity/issues)
+
+</div>
