@@ -1,0 +1,15 @@
+CREATE DATABASE IF NOT EXISTS mapcity;
+USE mapcity;
+
+CREATE TABLE IF NOT EXISTS lugares (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nome VARCHAR(100) NOT NULL,
+  descricao TEXT,
+  tipo VARCHAR(50) DEFAULT 'outro',
+  latitude DECIMAL(10,8),
+  longitude DECIMAL(11,8),
+  resolvido BOOLEAN DEFAULT FALSE,
+  imagem TEXT,
+  resolvido_em TIMESTAMP NULL,
+  criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

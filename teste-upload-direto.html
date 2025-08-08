@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste Upload Direto</title>
+</head>
+<body>
+    <h1>Teste Upload Direto</h1>
+    <input type="file" id="fileInput" accept="image/*" multiple>
+    <button onclick="testarUpload()">Testar Upload</button>
+    <div id="resultado"></div>
+
+    <script>
+        let uploadedImagePaths = []; // Variável global para armazenar caminhos
+        
+        async function testarUpload() {
+            const fileInput = document.getElementById('fileInput');
+            const files = fileInput.files;
+            const resultado = document.getElementById('resultado');
+            
+            if (files.length === 0) {
+                resultado.innerHTML = '<p style="color: red;">Selecione pelo menos um arquivo!</p>';
+                return;
+            }
+            
+            console.log('🎯 Testando upload direto...');
+            console.log('📁 Arquivos selecionados:', files.length);
+            
+            resultado.innerHTML = '<p>Enviando arquivos...</p>';
+            
+            try {
+                const imagePaths = [];
+                
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    console.log(`⬆️ Enviando arquivo ${i + 1}:`, file.name, file.size, 'bytes');
+                    
+                    const formData = new FormData();
+                    formData.append('image', file);
+                    
+                    console.log('📤 FormData criado, enviando para backend...');
+                    
+                    const response = await fetch('http://localhost:3001/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    console.log(`📡 Response status para ${file.name}:`, response.status);
+                    console.log(`📡 Response headers:`, response.headers);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log(`✅ Resposta para ${file.name}:`, data);
+                        
+                        if (data.imagePath) {
+                            imagePaths.push(data.imagePath);
+                            console.log(`📂 Caminho adicionado: ${data.imagePath}`);
+                        } else {
+                            console.error(`❌ Resposta não contém imagePath:`, data);
+                        }
+                    } else {
+                        const errorText = await response.text();
+                        console.error(`❌ Erro no upload de ${file.name}:`, response.status, errorText);
+                    }
+                }
+                
+                console.log('📤 Resultado final:', imagePaths);
+                uploadedImagePaths = imagePaths; // Salvar na variável global
+                
+                resultado.innerHTML = `
+                    <h3>Resultado:</h3>
+                    <p><strong>Arquivos enviados:</strong> ${imagePaths.length}</p>
+                    <p><strong>Caminhos:</strong></p>
+                    <pre>${JSON.stringify(imagePaths, null, 2)}</pre>
+                    <h4>Teste de Marcador:</h4>
+                    <button onclick="testarMarcador()">Criar Marcador de Teste</button>
+                `;
+                
+            } catch (error) {
+                console.error('❌ Erro geral:', error);
+                resultado.innerHTML = `<p style="color: red;">Erro: ${error.message}</p>`;
+            }
+        }
+        
+        async function testarMarcador() {
+            console.log('🚀 Testando criação de marcador com imagePaths:', uploadedImagePaths);
+            
+            const payload = {
+                nome: 'Teste Upload',
+                descricao: 'Teste de marcador com imagens',
+                tipo: 'outro',
+                latitude: -22.1207,
+                longitude: -51.3889,
+                imagePaths: uploadedImagePaths
+            };
+            
+            console.log('📤 Enviando payload para /lugares:', payload);
+            
+            try {
+                const response = await fetch('http://localhost:3001/lugares', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                console.log('📡 Response status:', response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ Marcador criado:', data);
+                    alert('Marcador criado com sucesso! ID: ' + data.id);
+                } else {
+                    const errorText = await response.text();
+                    console.error('❌ Erro ao criar marcador:', errorText);
+                    alert('Erro ao criar marcador: ' + errorText);
+                }
+            } catch (error) {
+                console.error('❌ Erro:', error);
+                alert('Erro: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

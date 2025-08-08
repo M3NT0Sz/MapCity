@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import './map-style.css';
 import { 
   View, 
   Text, 
@@ -24,95 +25,96 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers }) {
   const [mapLoaded, setMapLoaded] = React.useState(false);
 
   React.useEffect(() => {
-    // Verifica se está na web
-    if (Platform.OS !== 'web') return;
-
-    // Carrega Leaflet via CDN
-    const loadLeaflet = () => {
-      if (window.L) {
-        initMap();
-        return;
-      }
-
-      console.log('Carregando Leaflet...');
-
-      // CSS do Leaflet
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
-
-      // JS do Leaflet
+    console.log('Iniciando carregamento do mapa...');
+    
+    // Carrega CSS do Leaflet primeiro
+    if (!document.querySelector('link[href*="leaflet"]')) {
+      const cssLink = document.createElement('link');
+      cssLink.rel = 'stylesheet';
+      cssLink.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(cssLink);
+      console.log('CSS do Leaflet carregado');
+    }
+    
+    // JS do Leaflet
+    if (!mapRef.current) {
+      console.error('mapRef.current não existe!');
+      return;
+    }
+    if (window.L) {
+      console.log('Leaflet já carregado:', window.L);
+      initMap();
+    } else {
+      console.log('Carregando script do Leaflet...');
       const script = document.createElement('script');
       script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-      script.onload = initMap;
+      script.onload = () => {
+        console.log('Script do Leaflet carregado:', window.L);
+        initMap();
+      };
       script.onerror = () => console.error('Erro ao carregar Leaflet');
       document.head.appendChild(script);
-    };
-
-    const initMap = () => {
-      if (!mapRef.current || !window.L) return;
-
+      return;
+    }
+    function initMap() {
+      if (!mapRef.current) {
+        console.error('mapRef.current não existe na inicialização!');
+        return;
+      }
+      if (!window.L) {
+        console.error('Leaflet não está disponível!');
+        return;
+      }
       console.log('Inicializando mapa Leaflet...');
-
       try {
-        // Cria o mapa
-        const map = window.L.map(mapRef.current).setView([-23.550520, -46.633308], 13);
-
-        // Adiciona tiles do OpenStreetMap
+        const map = window.L.map(mapRef.current).setView([-22.1207, -51.3889], 13);
         window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '© OpenStreetMap contributors'
         }).addTo(map);
-
-      // Clique no mapa
-      map.on('click', function(e) {
-        // Verifica se o clique foi em um marcador
-        if (e.originalEvent && e.originalEvent.target && 
-            (e.originalEvent.target.closest('.leaflet-marker-icon') || 
-             e.originalEvent.target.closest('path'))) {
-          console.log('Clique foi em um marcador, ignorando clique do mapa');
-          return;
-        }
-        
-        const { lat, lng } = e.latlng;
-        console.log('Clique no mapa:', lat, lng);
-        onMapClick(lat, lng);
-      });        // CSS personalizado para popups
-      const style = document.createElement('style');
-      style.textContent = `
-        .custom-popup .leaflet-popup-content-wrapper {
-          padding: 0;
-          border-radius: 12px;
-          box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-        }
-        .custom-popup .leaflet-popup-content {
-          margin: 0;
-          padding: 0;
-        }
-        .custom-popup .leaflet-popup-tip {
-          background: white;
-          border: none;
-        }
-        .custom-popup button:hover {
-          opacity: 0.9;
-          transform: translateY(-1px);
-        }
-      `;
-      document.head.appendChild(style);
-
-      setMapLoaded(true);
+        map.on('click', function(e) {
+          if (e.originalEvent && e.originalEvent.target && 
+              (e.originalEvent.target.closest('.leaflet-marker-icon') || 
+               e.originalEvent.target.closest('path'))) {
+            console.log('Clique foi em um marcador, ignorando clique do mapa');
+            return;
+          }
+          const { lat, lng } = e.latlng;
+          console.log('Clique no mapa:', lat, lng);
+          onMapClick(lat, lng);
+        });
+        const style = document.createElement('style');
+        style.textContent = `
+          .custom-popup .leaflet-popup-content-wrapper {
+            padding: 0;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+          }
+          .custom-popup .leaflet-popup-content {
+            margin: 0;
+            padding: 0;
+          }
+          .custom-popup .leaflet-popup-tip {
+            background: white;
+            border: none;
+          }
+          .custom-popup button:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+          }
+        `;
+        document.head.appendChild(style);
+        setMapLoaded(true);
         console.log('Mapa carregado com sucesso!');
-
-        // Salva referência para adicionar marcadores
         window.mapInstance = map;
-        window.markersAdded = new Set(); // Para evitar duplicatas
-
+        window.markersAdded = new Set();
       } catch (error) {
         console.error('Erro ao criar mapa:', error);
       }
-    };
-
-    loadLeaflet();
+    }
+    // Se o Leaflet já está carregado, inicializa o mapa
+    if (window.L) {
+      initMap();
+    }
   }, [onMapClick]);
 
   // Adiciona marcadores
@@ -136,10 +138,10 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers }) {
     markers.forEach(marker => {
       // Cores por tipo
       const colors = {
-        'lixo': 'green',
-        'buraco': 'orange', 
-        'iluminacao': 'blue',
-        'outro': 'red'
+        'lixo': '#27ae60',     // Verde - Lixo
+        'buraco': '#f39c12',   // Laranja - Buraco
+        'iluminacao': '#3498db', // Azul - Iluminação
+        'outro': '#9b59b6'     // Roxo - Outro
       };
 
       try {
@@ -181,6 +183,13 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers }) {
             icon: checkIcon,
             isCustomMarker: true
           }).addTo(window.mapInstance);
+          
+          // Adiciona clique ao ícone de check também
+          checkMarker.on('click', (e) => {
+            e.originalEvent.stopPropagation();
+            console.log('Clique no ícone de resolvido:', marker.id);
+            onMarkerClick(marker);
+          });
         }
 
         // Clique no marcador abre modal (sem interferir com clique no mapa)
@@ -208,36 +217,36 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers }) {
   }
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+    <div style={{ width: '100vw', height: '100vh', position: 'fixed', top: 0, left: 0, zIndex: 1000, backgroundColor: '#f0f0f0' }}>
       <div 
         ref={mapRef}
         style={{ 
           width: '100%', 
-          height: '100vh',
-          backgroundColor: '#f0f0f0'
+          height: '100%',
+          backgroundColor: '#e0e0e0',
+          border: '2px solid red'
         }}
       />
-      {!mapLoaded && (
-        <div style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          background: 'rgba(255,255,255,0.95)',
-          padding: '20px 30px',
-          borderRadius: '10px',
-          fontSize: '18px',
-          color: '#333',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          textAlign: 'center'
-        }}>
-          <div>🗺️</div>
-          <div>Carregando mapa...</div>
-        </div>
-      )}
+      <div style={{
+        position: 'absolute',
+        top: 10,
+        left: 10,
+        background: 'white',
+        padding: '10px',
+        borderRadius: '5px',
+        fontSize: '14px',
+        zIndex: 1001
+      }}>
+        Status: {mapLoaded ? 'Mapa Carregado' : 'Carregando...'}
+        <br />
+        Leaflet: {typeof window.L !== 'undefined' ? 'OK' : 'Não carregado'}
+        <br />
+        MapRef: {mapRef.current ? 'OK' : 'Null'}
+      </div>
     </div>
   );
 }
+
 
 // Componente principal
 export default function MapCityMap() {
@@ -250,6 +259,140 @@ export default function MapCityMap() {
   const [description, setDescription] = useState('');
   const [selectedImages, setSelectedImages] = useState([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [markerAddress, setMarkerAddress] = useState('');
+  const [clickAddress, setClickAddress] = useState('');
+
+  // Função para buscar endereço baseado nas coordenadas
+  const getAddressFromCoords = async (lat, lng) => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=pt-BR&zoom=18`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Erro na requisição');
+      }
+      
+      const data = await response.json();
+      
+      if (data && data.address) {
+        const address = data.address;
+        let formattedAddress = '';
+        
+        // Prioriza: Rua + Número, depois Bairro, depois Cidade
+        const road = address.road || address.pedestrian || address.footway || address.cycleway;
+        const houseNumber = address.house_number;
+        const suburb = address.suburb || address.neighbourhood || address.city_district || address.quarter;
+        const city = address.city || address.town || address.village || address.municipality;
+        
+        if (road) {
+          formattedAddress = road;
+          if (houseNumber) {
+            formattedAddress += `, ${houseNumber}`;
+          }
+          if (suburb && suburb !== road) {
+            formattedAddress += ` - ${suburb}`;
+          }
+        } else if (suburb) {
+          formattedAddress = suburb;
+          if (city && city !== suburb) {
+            formattedAddress += ` - ${city}`;
+          }
+        } else if (city) {
+          formattedAddress = city;
+        } else {
+          // Fallback para display_name
+          const parts = data.display_name.split(',');
+          formattedAddress = parts[0] || 'Local não identificado';
+        }
+        
+        return formattedAddress.trim() || 'Endereço não encontrado';
+      }
+      
+      return 'Endereço não encontrado';
+    } catch (error) {
+      console.error('Erro ao buscar endereço:', error);
+      return 'Endereço não disponível';
+    }
+  };
+
+  // Busca endereço quando um marcador é selecionado
+  React.useEffect(() => {
+    if (selectedMarker) {
+      getAddressFromCoords(selectedMarker.lat, selectedMarker.lng)
+        .then(address => setMarkerAddress(address));
+    }
+  }, [selectedMarker]);
+
+  // Busca endereço quando uma posição é clicada para novo marcador
+  React.useEffect(() => {
+    if (clickPosition) {
+      getAddressFromCoords(clickPosition.lat, clickPosition.lng)
+        .then(address => setClickAddress(address));
+    }
+  }, [clickPosition]);
+
+  // Buscar marcadores do backend ao carregar
+  React.useEffect(() => {
+    fetch('http://localhost:3001/lugares')
+      .then(res => res.json())
+      .then(data => {
+        console.log('Dados recebidos do backend:', data);
+        const adaptados = data.map(lugar => {
+          console.log('Processando lugar:', lugar.id, 'Imagem:', lugar.imagem, 'Tipo:', typeof lugar.imagem);
+          let images = [];
+          
+          if (lugar.imagem) {
+            try {
+              // Verificar se é string antes de chamar trim
+              if (typeof lugar.imagem === 'string') {
+                const imagemTrimmed = lugar.imagem.trim();
+                if (imagemTrimmed === '') {
+                  console.log('Campo imagem vazio para lugar', lugar.id);
+                  images = [];
+                } else {
+                  const parsed = JSON.parse(imagemTrimmed);
+                  console.log('Imagens parseadas para lugar', lugar.id, ':', parsed);
+                  images = Array.isArray(parsed) ? parsed : [];
+                }
+              } else if (Array.isArray(lugar.imagem)) {
+                // Se já é um array, usar diretamente
+                console.log('Imagem já é array para lugar', lugar.id, ':', lugar.imagem);
+                images = lugar.imagem;
+              } else {
+                // Se é outro tipo, tentar converter para string e depois parsear
+                console.log('Tentando converter tipo', typeof lugar.imagem, 'para string');
+                const imagemString = String(lugar.imagem);
+                const parsed = JSON.parse(imagemString);
+                images = Array.isArray(parsed) ? parsed : [];
+              }
+            } catch (e) {
+              console.error('Erro ao parsear imagem para lugar', lugar.id, ':', e);
+              console.error('Conteúdo do campo imagem:', lugar.imagem);
+              console.error('Tipo do conteúdo:', typeof lugar.imagem);
+              images = [];
+            }
+          } else {
+            console.log('Campo imagem null/undefined para lugar', lugar.id);
+            images = [];
+          }
+          
+          return {
+            id: lugar.id,
+            lat: lugar.latitude,
+            lng: lugar.longitude,
+            type: lugar.tipo || 'outro', // Usa o campo tipo da tabela
+            description: lugar.descricao || lugar.nome,
+            images: images,
+            resolved: lugar.resolvido || false,
+            resolvedAt: lugar.resolvido_em || null
+          };
+        });
+        console.log('Marcadores adaptados:', adaptados);
+        setMarkers(adaptados);
+      })
+      .catch(err => console.error('Erro ao buscar lugares:', err));
+  }, []);
 
   console.log('Renderizando componente. Marcadores:', markers.length);
 
@@ -259,33 +402,204 @@ export default function MapCityMap() {
     setIsModalVisible(true);
   }, []);
 
-  const handleSubmit = useCallback(() => {
+  // Função para fazer upload das imagens
+  const uploadImages = async (images) => {
+    console.log('🚨🚨🚨 ATENÇÃO: uploadImages CHAMADA!');
+    console.log('🚨 TIPO DE IMAGES:', typeof images);
+    console.log('🚨 É ARRAY?:', Array.isArray(images));
+    console.log('🚨 IMAGES:', images);
+    console.log('📤 Iniciando upload de', images?.length || 0, 'imagens');
+    
+    if (!images || images.length === 0) {
+      console.log('⚠️ AVISO: Nenhuma imagem foi fornecida para upload');
+      return [];
+    }
+    
+    const uploadedPaths = [];
+
+    // Upload cada imagem individualmente
+    for (let i = 0; i < images.length; i++) {
+      const image = images[i];
+      console.log(`📁 Processando imagem ${i + 1}/${images.length}:`, image.id);
+      
+      try {
+        // Primeiro vamos verificar a estrutura do objeto image
+        console.log('🔍 ESTRUTURA DA IMAGEM:', image);
+        console.log('🔍 PROPRIEDADES:', Object.keys(image));
+        console.log('🔍 image.uri:', image.uri);
+        console.log('🔍 image.data:', image.data);
+        
+        // Determinar qual propriedade contém a URI da imagem
+        let imageUri;
+        if (image.uri) {
+          imageUri = image.uri;
+        } else if (image.data) {
+          imageUri = image.data;
+        } else {
+          console.error('❌ Objeto image não tem uri nem data:', image);
+          continue;
+        }
+        
+        // Converter base64 para Blob de forma mais robusta
+        console.log('📝 URI da imagem:', imageUri.substring(0, 50) + '...');
+        
+        // Verificar se é data URL válida
+        if (!imageUri.startsWith('data:')) {
+          console.error('❌ URI não é data URL válida:', imageUri.substring(0, 100));
+          continue;
+        }
+        
+        // Separar o header do base64
+        const [header, base64Data] = imageUri.split(',');
+        if (!base64Data) {
+          console.error('❌ Não foi possível separar base64:', imageUri.substring(0, 100));
+          continue;
+        }
+        
+        console.log('📝 Header:', header);
+        console.log('📝 Tamanho do base64:', base64Data.length);
+        
+        // Converter base64 para bytes
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        
+        // Criar Blob com tipo correto
+        const mimeMatch = header.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+)/);
+        const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+        
+        console.log('📝 MIME type detectado:', mimeType);
+        console.log('📝 Tamanho do arquivo:', byteArray.length, 'bytes');
+        
+        const blob = new Blob([byteArray], { type: mimeType });
+        
+        // Criar File object a partir do Blob
+        const file = new File([blob], `image_${image.id}.jpg`, { type: mimeType });
+        
+        console.log('📝 File criado:', file.name, file.size, 'bytes');
+        
+        const formData = new FormData();
+        formData.append('image', file);
+
+        console.log('🌐 Enviando para http://localhost:3001/upload...');
+        const uploadResponse = await fetch('http://localhost:3001/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        console.log('📡 Response status:', uploadResponse.status);
+        console.log('📡 Response ok:', uploadResponse.ok);
+
+        if (!uploadResponse.ok) {
+          const errorText = await uploadResponse.text();
+          console.error('❌ Erro no upload da imagem:', image.id, '- Status:', uploadResponse.status, '- Erro:', errorText);
+          continue; // Pula para a próxima imagem
+        }
+
+        const result = await uploadResponse.json();
+        console.log('✅ Upload concluído para', image.id, ':', result);
+        
+        if (result.imagePath) {
+          uploadedPaths.push(result.imagePath);
+          console.log('📂 Caminho adicionado:', result.imagePath);
+        } else {
+          console.error('⚠️ Response não contém imagePath:', result);
+        }
+        
+      } catch (error) {
+        console.error('❌ Erro no upload de', image.id, ':', error);
+      }
+    }
+
+    console.log('📤 Upload finalizado. Total de caminhos:', uploadedPaths.length);
+    console.log('📂 Caminhos finais:', uploadedPaths);
+    return uploadedPaths;
+  };
+
+  const handleSubmit = useCallback(async () => {
     if (!problemType || !description || !clickPosition) {
       Alert.alert('Erro', 'Por favor, preencha todos os campos obrigatórios.');
       return;
     }
 
-    const newMarker = {
-      id: Date.now(),
-      lat: clickPosition.lat,
-      lng: clickPosition.lng,
-      type: problemType,
-      description,
-      images: selectedImages, // Array de imagens
-      timestamp: new Date().toISOString()
-    };
-
-    console.log('Adicionando novo marcador:', newMarker);
-    setMarkers(prev => [...prev, newMarker]);
+    // Envia para o backend
+    console.log('Enviando marcador com tipo:', problemType);
     
+    // Mapeia o tipo para um nome mais descritivo
+    const nomesPorTipo = {
+      'lixo': 'Problema de Lixo',
+      'buraco': 'Buraco na Rua',
+      'iluminacao': 'Problema de Iluminação',
+      'outro': 'Outro Problema'
+    };
+    
+    const nomeProblema = nomesPorTipo[problemType] || 'Problema Reportado';
+    
+    try {
+      // Primeiro, fazer upload das imagens se houver
+      let imagePaths = [];
+      console.log('🔍 VERIFICAÇÃO: selectedImages length =', selectedImages.length);
+      console.log('🔍 VERIFICAÇÃO: selectedImages =', selectedImages);
+      
+      if (selectedImages.length > 0) {
+        console.log('📤 Fazendo upload de', selectedImages.length, 'imagem(s)...');
+        imagePaths = await uploadImages(selectedImages);
+        console.log('✅ Upload concluído. Caminhos recebidos:', imagePaths);
+      } else {
+        console.log('ℹ️ Nenhuma imagem selecionada - imagePaths ficará vazio');
+      }
+
+      const response = await fetch('http://localhost:3001/lugares', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: nomeProblema,
+          descricao: description,
+          tipo: problemType,
+          latitude: clickPosition.lat,
+          longitude: clickPosition.lng,
+          imagePaths: imagePaths // Enviar os caminhos das imagens uploadadas
+        })
+      });
+
+      if (!response.ok) {
+        if (response.status === 413) {
+          throw new Error('Imagens muito grandes. Tente com imagens menores.');
+        }
+        throw new Error(`Erro do servidor: ${response.status}`);
+      }
+
+      const novoLugar = await response.json();
+      console.log('Resposta do backend:', novoLugar);
+      console.log('imagePaths enviados:', imagePaths);
+      setMarkers(prev => [
+        ...prev,
+        {
+          id: novoLugar.id,
+          lat: novoLugar.latitude,
+          lng: novoLugar.longitude,
+          type: novoLugar.tipo || problemType,
+          description: description,
+          images: novoLugar.imagem || [], // Usar dados do backend
+          resolved: false
+        }
+      ]);
+      Alert.alert('Sucesso', 'Problema reportado com sucesso!');
+    } catch (err) {
+      console.error('Erro ao salvar marcador:', err);
+      Alert.alert('Erro', err.message || 'Não foi possível salvar o marcador!');
+    }
+
     // Reset
     setProblemType('');
     setDescription('');
     setSelectedImages([]);
     setIsModalVisible(false);
     setClickPosition(null);
-    
-    Alert.alert('Sucesso', 'Problema reportado com sucesso!');
+    setClickAddress('');
   }, [problemType, description, clickPosition, selectedImages]);
 
   const closeModal = () => {
@@ -294,9 +608,46 @@ export default function MapCityMap() {
     setDescription('');
     setSelectedImages([]);
     setClickPosition(null);
+    setClickAddress('');
   };
 
-  const handleImageUpload = (event) => {
+  // Função para redimensionar imagem
+  const resizeImage = (file, maxWidth = 800, maxHeight = 600, quality = 0.8) => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        // Calcula nova dimensão mantendo proporção
+        let { width, height } = img;
+        
+        if (width > maxWidth || height > maxHeight) {
+          if (width > height) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          } else {
+            width = (width * maxHeight) / height;
+            height = maxHeight;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Desenha imagem redimensionada
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Converte para base64 com qualidade reduzida
+        const resizedDataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(resizedDataUrl);
+      };
+      
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  const handleImageUpload = async (event) => {
     const files = Array.from(event.target.files);
     
     if (files.length === 0) return;
@@ -307,17 +658,21 @@ export default function MapCityMap() {
       return;
     }
 
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
+    for (const file of files) {
+      try {
+        // Redimensiona a imagem antes de adicionar
+        const resizedImage = await resizeImage(file);
+        
         setSelectedImages(prev => [...prev, {
           id: Date.now() + Math.random(),
-          data: e.target.result,
+          data: resizedImage,
           name: file.name
         }]);
-      };
-      reader.readAsDataURL(file);
-    });
+      } catch (error) {
+        console.error('Erro ao redimensionar imagem:', error);
+        Alert.alert('Erro', 'Não foi possível processar a imagem.');
+      }
+    }
   };
 
   const removeImage = (imageId) => {
@@ -326,12 +681,15 @@ export default function MapCityMap() {
 
   const handleMarkerClick = useCallback((marker) => {
     console.log('Marcador clicado:', marker);
+    console.log('Imagens do marcador:', marker.images);
+    console.log('Tipo das imagens:', typeof marker.images);
+    console.log('Length das imagens:', marker.images?.length);
     setSelectedMarker(marker);
     setCurrentImageIndex(0); // Reset do índice da imagem
     setIsViewModalVisible(true);
   }, []);
 
-  const handleMarkResolved = useCallback(() => {
+  const handleMarkResolved = useCallback(async () => {
     if (!selectedMarker) {
       console.log('Nenhum marcador selecionado');
       return;
@@ -339,19 +697,35 @@ export default function MapCityMap() {
     
     console.log('Marcando como resolvido:', selectedMarker.id);
     
-    setMarkers(prev => {
-      const updated = prev.map(marker => 
-        marker.id === selectedMarker.id 
-          ? { ...marker, resolved: true, resolvedAt: new Date().toISOString() }
-          : marker
-      );
-      console.log('Marcadores atualizados:', updated);
-      return updated;
-    });
-    
-    setIsViewModalVisible(false);
-    setSelectedMarker(null);
-    Alert.alert('Sucesso', 'Problema marcado como resolvido!');
+    try {
+      // Atualiza no backend
+      const response = await fetch(`http://localhost:3001/lugares/${selectedMarker.id}/resolver`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao atualizar no servidor');
+      }
+
+      // Atualiza no frontend
+      setMarkers(prev => {
+        const updated = prev.map(marker => 
+          marker.id === selectedMarker.id 
+            ? { ...marker, resolved: true, resolvedAt: new Date().toISOString() }
+            : marker
+        );
+        console.log('Marcadores atualizados:', updated);
+        return updated;
+      });
+      
+      setIsViewModalVisible(false);
+      setSelectedMarker(null);
+      Alert.alert('Sucesso', 'Problema marcado como resolvido!');
+    } catch (error) {
+      console.error('Erro ao marcar como resolvido:', error);
+      Alert.alert('Erro', 'Não foi possível marcar como resolvido. Tente novamente.');
+    }
   }, [selectedMarker]);
 
   return (
@@ -383,7 +757,7 @@ export default function MapCityMap() {
           <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
             {clickPosition && (
               <Text style={styles.locationText}>
-                📍 Localização: {clickPosition.lat.toFixed(6)}, {clickPosition.lng.toFixed(6)}
+                📍 {clickAddress || 'Carregando endereço...'}
               </Text>
             )}
             
@@ -546,7 +920,7 @@ export default function MapCityMap() {
             {selectedMarker && (
               <>
                 <Text style={styles.locationText}>
-                  📍 Localização: {selectedMarker.lat.toFixed(6)}, {selectedMarker.lng.toFixed(6)}
+                  📍 {markerAddress || 'Carregando endereço...'}
                 </Text>
                 
                 <Text style={styles.label}>Problema</Text>
@@ -568,15 +942,29 @@ export default function MapCityMap() {
                         borderRadius: 12,
                         overflow: 'hidden',
                         backgroundColor: '#f8f9fa',
-                        border: '2px solid #e9ecef'
+                        border: '2px solid #e9ecef',
+                        minHeight: 200, // Altura mínima em vez de fixa
+                        maxHeight: 400, // Altura máxima para limitar
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
                       }}>
                         <img 
-                          src={selectedMarker.images[currentImageIndex]?.data || selectedMarker.images[currentImageIndex]}
+                          src={
+                            selectedMarker.images[currentImageIndex]?.data || 
+                            (selectedMarker.images[currentImageIndex]?.startsWith('/uploads/') 
+                              ? `http://localhost:3001${selectedMarker.images[currentImageIndex]}`
+                              : selectedMarker.images[currentImageIndex])
+                          }
                           alt={`Problema - Imagem ${currentImageIndex + 1}`}
                           style={{
                             width: '100%',
-                            height: 250,
-                            objectFit: 'cover'
+                            maxHeight: '400px',
+                            height: 'auto', // Altura automática para manter proporção
+                            objectFit: 'contain', // Volta para contain para não cortar a imagem
+                            backgroundColor: '#f8f9fa',
+                            borderRadius: 8,
+                            display: 'block'
                           }}
                         />
                         
@@ -701,13 +1089,18 @@ export default function MapCityMap() {
                               }}
                             >
                               <img
-                                src={image.data || image}
+                                src={
+                                  image.data || 
+                                  (image?.startsWith('/uploads/') 
+                                    ? `http://localhost:3001${image}`
+                                    : image)
+                                }
                                 alt={`Miniatura ${index + 1}`}
                                 style={{
-                                  width: 50,
-                                  height: 50,
-                                  objectFit: 'cover',
-                                  borderRadius: 6
+                                  width: 60,
+                                  height: 60,
+                                  objectFit: 'cover', // Mantém proporção das miniaturas
+                                  borderRadius: 8
                                 }}
                               />
                             </button>
@@ -729,7 +1122,16 @@ export default function MapCityMap() {
                       ✅ Este problema foi marcado como resolvido
                     </Text>
                     <Text style={styles.resolvedDate}>
-                      Resolvido em: {new Date(selectedMarker.resolvedAt).toLocaleDateString('pt-BR')}
+                      Resolvido em: {selectedMarker.resolvedAt 
+                        ? new Date(selectedMarker.resolvedAt).toLocaleString('pt-BR', {
+                            day: '2-digit',
+                            month: '2-digit', 
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })
+                        : 'Data não disponível'
+                      }
                     </Text>
                   </View>
                 )}
