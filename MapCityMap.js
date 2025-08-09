@@ -10,6 +10,9 @@ import {
   Alert,
   Platform 
 } from 'react-native';
+import { useAuth } from './AuthComponents';
+import { lugaresAPI, uploadAPI } from './apiUtils';
+import { areasAPI } from './AreasAPI';
 
 // Tipos de problemas disponíveis
 const PROBLEM_TYPES = [
@@ -20,7 +23,7 @@ const PROBLEM_TYPES = [
 ];
 
 // Componente simples do mapa usando Leaflet
-function SimpleMapView({ onMapClick, onMarkerClick, markers }) {
+function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoints = [], areaDrawingMode = false }) {
   const mapRef = React.useRef(null);
   const [mapLoaded, setMapLoaded] = React.useState(false);
 
@@ -208,6 +211,100 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers }) {
     });
   }, [markers, mapLoaded, onMarkerClick]);
 
+  // Desenhar áreas das ONGs
+  React.useEffect(() => {
+    if (!mapLoaded || !window.mapInstance) return;
+
+    console.log('Atualizando áreas:', areas.length);
+
+    // Limpar áreas existentes
+    window.mapInstance.eachLayer((layer) => {
+      if (layer.options && layer.options.isAreaLayer) {
+        window.mapInstance.removeLayer(layer);
+      }
+    });
+
+    // Desenhar áreas
+    areas.forEach(area => {
+      try {
+        if (area.coordenadas && area.coordenadas.length >= 3) {
+          const latlngs = area.coordenadas.map(coord => [coord.lat, coord.lng]);
+          
+          const polygon = window.L.polygon(latlngs, {
+            color: '#3B82F6',
+            fillColor: '#3B82F6',
+            fillOpacity: 0.2,
+            weight: 2,
+            isAreaLayer: true
+          }).addTo(window.mapInstance);
+
+          polygon.bindPopup(`
+            <div class="custom-popup">
+              <h3>${area.nome}</h3>
+              <p><strong>ONG:</strong> ${area.ong_nome || 'Não informado'}</p>
+              <p><strong>Criada em:</strong> ${new Date(area.criado_em).toLocaleDateString()}</p>
+              ${area.descricao ? `<p><strong>Descrição:</strong> ${area.descricao}</p>` : ''}
+            </div>
+          `);
+        }
+      } catch (error) {
+        console.error('Erro ao desenhar área:', error);
+      }
+    });
+  }, [areas, mapLoaded]);
+
+  // Desenhar pontos da área em criação
+  React.useEffect(() => {
+    if (!mapLoaded || !window.mapInstance) return;
+
+    // Limpar pontos de desenho existentes
+    window.mapInstance.eachLayer((layer) => {
+      if (layer.options && layer.options.isDrawingPoint) {
+        window.mapInstance.removeLayer(layer);
+      }
+    });
+
+    if (areaDrawingMode && areaPoints.length > 0) {
+      console.log('Desenhando pontos da área:', areaPoints.length);
+
+      // Desenhar pontos
+      areaPoints.forEach((point, index) => {
+        window.L.circleMarker([point.lat, point.lng], {
+          radius: 6,
+          color: '#F59E0B',
+          fillColor: '#F59E0B',
+          fillOpacity: 0.8,
+          weight: 2,
+          isDrawingPoint: true
+        }).addTo(window.mapInstance).bindPopup(`Ponto ${index + 1}`);
+      });
+
+      // Desenhar linha conectando os pontos se tiver mais de 1
+      if (areaPoints.length > 1) {
+        const latlngs = areaPoints.map(point => [point.lat, point.lng]);
+        
+        window.L.polyline(latlngs, {
+          color: '#F59E0B',
+          weight: 3,
+          opacity: 0.8,
+          isDrawingPoint: true
+        }).addTo(window.mapInstance);
+
+        // Se tiver 3 ou mais pontos, mostrar prévia do polígono
+        if (areaPoints.length >= 3) {
+          window.L.polygon(latlngs, {
+            color: '#F59E0B',
+            fillColor: '#F59E0B',
+            fillOpacity: 0.2,
+            weight: 2,
+            dashArray: '5, 5',
+            isDrawingPoint: true
+          }).addTo(window.mapInstance);
+        }
+      }
+    }
+  }, [areaPoints, areaDrawingMode, mapLoaded]);
+
   if (Platform.OS !== 'web') {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -250,6 +347,7 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers }) {
 
 // Componente principal
 export default function MapCityMap() {
+  const { usuario, token, estaLogado } = useAuth();
   const [markers, setMarkers] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isViewModalVisible, setIsViewModalVisible] = useState(false);
@@ -260,17 +358,100 @@ export default function MapCityMap() {
   const [selectedImages, setSelectedImages] = useState([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [markerAddress, setMarkerAddress] = useState('');
+  const [addressServiceFailed, setAddressServiceFailed] = useState(false);
   const [clickAddress, setClickAddress] = useState('');
+  
+  // Estados para áreas de responsabilidade (ONGs)
+  const [areas, setAreas] = useState([]);
+  const [isAreaModalVisible, setIsAreaModalVisible] = useState(false);
+  const [areaDrawingMode, setAreaDrawingMode] = useState(false);
+  const [areaPoints, setAreaPoints] = useState([]);
+  const [areaName, setAreaName] = useState('');
+  const [areaDescription, setAreaDescription] = useState('');
+  const [notificacoes, setNotificacoes] = useState([]);
+  const [showNotificacoes, setShowNotificacoes] = useState(false);
+  const [isNotificationModalVisible, setIsNotificationModalVisible] = useState(false);
+
+  // Verificar se o usuário está logado
+  if (!estaLogado) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+        <Text style={{ fontSize: 18, textAlign: 'center', marginBottom: 20 }}>
+          Você precisa estar logado para acessar o mapa
+        </Text>
+        <Text style={{ fontSize: 14, color: '#666', textAlign: 'center' }}>
+          Volte para a tela inicial e faça o login
+        </Text>
+      </View>
+    );
+  }
+
+  // Função auxiliar para gerar endereço de fallback
+  const generateFallbackAddress = (lat, lng) => {
+    // Determina região aproximada baseada nas coordenadas
+    let region = 'Localização Desconhecida';
+    
+    // Coordenadas aproximadas do Brasil
+    if (lat >= -35 && lat <= 5 && lng >= -75 && lng <= -30) {
+      region = 'Brasil';
+      
+      // Regiões aproximadas
+      if (lat >= -15 && lng >= -50) {
+        region = 'Região Central do Brasil';
+      } else if (lat >= -25 && lat <= -15) {
+        region = 'Região Sudeste do Brasil';
+      } else if (lat <= -25) {
+        region = 'Região Sul do Brasil';
+      } else if (lat >= -10) {
+        region = 'Região Norte/Nordeste do Brasil';
+      }
+    }
+    
+    return `${region} (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+  };
 
   // Função para buscar endereço baseado nas coordenadas
-  const getAddressFromCoords = async (lat, lng) => {
+  const getAddressFromCoords = async (lat, lng, retryCount = 0) => {
+    // Validar parâmetros de entrada
+    if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) {
+      console.warn('Coordenadas inválidas:', { lat, lng });
+      return 'Coordenadas inválidas';
+    }
+
+    // Se o serviço já falhou antes, usar fallback imediatamente
+    if (addressServiceFailed) {
+      console.log('Serviço de endereços desabilitado, usando fallback');
+      return generateFallbackAddress(lat, lng);
+    }
+
+    // Se já tentou 2 vezes, usar fallback e marcar serviço como falho
+    if (retryCount >= 2) {
+      console.warn('Limite de tentativas excedido, desabilitando serviço de endereços');
+      setAddressServiceFailed(true);
+      return generateFallbackAddress(lat, lng);
+    }
+
     try {
+      // Adicionar timeout e headers para melhor compatibilidade
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 segundos timeout
+      
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=pt-BR&zoom=18`
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=pt-BR&zoom=18`,
+        {
+          signal: controller.signal,
+          headers: {
+            'User-Agent': 'MapCity/1.0',
+            'Accept': 'application/json',
+          },
+          mode: 'cors', // Explicitly set CORS mode
+        }
       );
       
+      clearTimeout(timeoutId);
+      
       if (!response.ok) {
-        throw new Error('Erro na requisição');
+        throw new Error(`Erro HTTP: ${response.status}`);
       }
       
       const data = await response.json();
@@ -311,35 +492,73 @@ export default function MapCityMap() {
       
       return 'Endereço não encontrado';
     } catch (error) {
-      console.error('Erro ao buscar endereço:', error);
-      return 'Endereço não disponível';
+      console.error(`Erro ao buscar endereço (tentativa ${retryCount + 1}):`, error);
+      
+      // Tratamento específico para diferentes tipos de erro
+      if (error.name === 'AbortError') {
+        console.warn('Busca de endereço cancelada por timeout - tentando novamente');
+        return getAddressFromCoords(lat, lng, retryCount + 1);
+      } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        console.warn('Problema de rede ao buscar endereço - tentando novamente');
+        // Esperar um pouco antes de tentar novamente
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+        return getAddressFromCoords(lat, lng, retryCount + 1);
+      } else {
+        // Para outros erros, usar fallback imediatamente
+        console.warn('Erro desconhecido, usando fallback');
+        return generateFallbackAddress(lat, lng);
+      }
     }
   };
 
   // Busca endereço quando um marcador é selecionado
   React.useEffect(() => {
-    if (selectedMarker) {
+    if (selectedMarker && 
+        typeof selectedMarker.lat === 'number' && 
+        typeof selectedMarker.lng === 'number' &&
+        !isNaN(selectedMarker.lat) && 
+        !isNaN(selectedMarker.lng)) {
       getAddressFromCoords(selectedMarker.lat, selectedMarker.lng)
         .then(address => setMarkerAddress(address));
+    } else if (selectedMarker) {
+      console.warn('Marcador selecionado com coordenadas inválidas:', selectedMarker);
+      setMarkerAddress('Coordenadas inválidas');
     }
   }, [selectedMarker]);
 
   // Busca endereço quando uma posição é clicada para novo marcador
   React.useEffect(() => {
-    if (clickPosition) {
+    if (clickPosition && 
+        typeof clickPosition.lat === 'number' && 
+        typeof clickPosition.lng === 'number' &&
+        !isNaN(clickPosition.lat) && 
+        !isNaN(clickPosition.lng)) {
       getAddressFromCoords(clickPosition.lat, clickPosition.lng)
         .then(address => setClickAddress(address));
+    } else if (clickPosition) {
+      console.warn('Posição clicada com coordenadas inválidas:', clickPosition);
+      setClickAddress('Coordenadas inválidas');
     }
   }, [clickPosition]);
 
   // Buscar marcadores do backend ao carregar
   React.useEffect(() => {
-    fetch('http://localhost:3001/lugares')
-      .then(res => res.json())
-      .then(data => {
-        console.log('Dados recebidos do backend:', data);
+    const carregarLugares = async () => {
+      try {
+        console.log('🔄 Carregando lugares para usuário:', usuario.email);
+        const data = await lugaresAPI.buscarTodos();
+        console.log('📍 Dados recebidos do backend:', data);
+        
         const adaptados = data.map(lugar => {
-          console.log('Processando lugar:', lugar.id, 'Imagem:', lugar.imagem, 'Tipo:', typeof lugar.imagem);
+          console.log('Processando lugar:', lugar.id, 'Coordenadas:', {
+            latitude: lugar.latitude, 
+            longitude: lugar.longitude,
+            tipos: {
+              lat: typeof lugar.latitude,
+              lng: typeof lugar.longitude
+            }
+          });
+          
           let images = [];
           
           if (lugar.imagem) {
@@ -377,146 +596,254 @@ export default function MapCityMap() {
             images = [];
           }
           
+          // Validar coordenadas antes de criar o objeto
+          const lat = parseFloat(lugar.latitude);
+          const lng = parseFloat(lugar.longitude);
+          
+          if (isNaN(lat) || isNaN(lng)) {
+            console.error('Coordenadas inválidas para lugar', lugar.id, ':', {
+              latitude: lugar.latitude,
+              longitude: lugar.longitude,
+              parsedLat: lat,
+              parsedLng: lng
+            });
+            return null; // Retorna null para filtrar depois
+          }
+          
           return {
             id: lugar.id,
-            lat: lugar.latitude,
-            lng: lugar.longitude,
-            type: lugar.tipo || 'outro', // Usa o campo tipo da tabela
+            lat: lat,
+            lng: lng,
+            type: lugar.tipo || 'outro',
             description: lugar.descricao || lugar.nome,
             images: images,
             resolved: lugar.resolvido || false,
             resolvedAt: lugar.resolvido_em || null
           };
-        });
-        console.log('Marcadores adaptados:', adaptados);
+        }).filter(lugar => lugar !== null); // Remove objetos com coordenadas inválidas
+        
+        console.log('✅ Marcadores adaptados:', adaptados);
         setMarkers(adaptados);
-      })
-      .catch(err => console.error('Erro ao buscar lugares:', err));
-  }, []);
+      } catch (error) {
+        console.error('❌ Erro ao buscar lugares:', error);
+        Alert.alert('Erro', 'Não foi possível carregar os marcadores');
+      }
+    };
+
+    if (estaLogado) {
+      carregarLugares();
+      
+      // Carregar áreas e notificações se for ONG
+      if (usuario.tipo === 'ong') {
+        carregarAreas();
+        carregarNotificacoes();
+      }
+    }
+  }, [estaLogado]);
+
+  // Carregar áreas de responsabilidade para ONGs
+  const carregarAreas = useCallback(async () => {
+    if (!usuario || usuario.tipo !== 'ong') return;
+    
+    try {
+      console.log('🗺️ Carregando áreas para ONG:', usuario.id);
+      const data = await areasAPI.buscarAreas();
+      console.log('✅ Áreas carregadas:', data.length);
+      setAreas(data);
+    } catch (error) {
+      console.error('❌ Erro ao carregar áreas:', error);
+    }
+  }, [usuario]);
+
+  // Carregar notificações para ONGs
+  const carregarNotificacoes = useCallback(async () => {
+    if (!usuario || usuario.tipo !== 'ong') return;
+    
+    try {
+      console.log('🔔 Carregando notificações para ONG:', usuario.id);
+      const data = await areasAPI.buscarNotificacoes();
+      console.log('✅ Notificações carregadas:', data.length);
+      setNotificacoes(data);
+    } catch (error) {
+      console.error('❌ Erro ao carregar notificações:', error);
+    }
+  }, [usuario]);
+
+  // ========= FUNÇÕES DE ÁREA PARA ONGS =========
+  
+  // Iniciar criação de área
+  const iniciarCriacaoArea = () => {
+    setAreaDrawingMode(true);
+    setAreaPoints([]);
+    Alert.alert(
+      'Marcar Área de Responsabilidade',
+      'Clique no mapa para marcar os pontos da sua área de responsabilidade. Clique no primeiro ponto novamente para finalizar.'
+    );
+  };
+
+  // Cancelar criação de área
+  const cancelarCriacaoArea = () => {
+    setAreaDrawingMode(false);
+    setAreaPoints([]);
+  };
+
+  // Finalizar criação de área
+  const finalizarCriacaoArea = async () => {
+    if (areaPoints.length < 3) {
+      Alert.alert('Erro', 'É necessário marcar pelo menos 3 pontos para criar uma área.');
+      return;
+    }
+
+    try {
+      const novaArea = {
+        nome: `Área ${new Date().toLocaleDateString()}`,
+        coordenadas: areaPoints
+      };
+
+      console.log('📍 Criando nova área:', novaArea);
+      await areasAPI.criarArea(novaArea);
+      
+      Alert.alert('Sucesso', 'Área de responsabilidade criada com sucesso!');
+      
+      // Resetar estado e recarregar áreas
+      setAreaDrawingMode(false);
+      setAreaPoints([]);
+      await carregarAreas();
+      
+    } catch (error) {
+      console.error('❌ Erro ao criar área:', error);
+      Alert.alert('Erro', 'Não foi possível criar a área de responsabilidade.');
+    }
+  };
 
   console.log('Renderizando componente. Marcadores:', markers.length);
 
   const handleMapClick = useCallback((lat, lng) => {
     console.log('Clique recebido:', lat, lng);
-    setClickPosition({ lat, lng });
-    setIsModalVisible(true);
-  }, []);
+    
+    // Se estiver no modo de desenho de área, adicionar ponto
+    if (areaDrawingMode && usuario && usuario.tipo === 'ong') {
+      const newPoint = { lat, lng };
+      
+      // Verificar se é o primeiro ponto sendo clicado novamente (fechar área)
+      if (areaPoints.length >= 3) {
+        const firstPoint = areaPoints[0];
+        const distance = Math.sqrt(
+          Math.pow(lat - firstPoint.lat, 2) + Math.pow(lng - firstPoint.lng, 2)
+        );
+        
+        // Se clicar próximo ao primeiro ponto (tolerância de 0.001)
+        if (distance < 0.001) {
+          finalizarCriacaoArea();
+          return;
+        }
+      }
+      
+      // Adicionar novo ponto
+      setAreaPoints(prev => [...prev, newPoint]);
+      console.log('📍 Ponto adicionado à área:', newPoint, 'Total:', areaPoints.length + 1);
+      return;
+    }
+    
+    // Verificar se o usuário pode adicionar marcadores normais
+    if (usuario.tipo === 'admin') {
+      Alert.alert(
+        'Modo Administrador',
+        'Como administrador, você pode visualizar e excluir marcadores, mas não criar novos.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
+    if (usuario.tipo === 'usuario' || usuario.tipo === 'ong') {
+      setClickPosition({ lat, lng });
+      setIsModalVisible(true);
+    }
+  }, [usuario, areaDrawingMode, areaPoints, finalizarCriacaoArea]);
 
   // Função para fazer upload das imagens
   const uploadImages = async (images) => {
-    console.log('🚨🚨🚨 ATENÇÃO: uploadImages CHAMADA!');
-    console.log('🚨 TIPO DE IMAGES:', typeof images);
-    console.log('🚨 É ARRAY?:', Array.isArray(images));
-    console.log('🚨 IMAGES:', images);
-    console.log('📤 Iniciando upload de', images?.length || 0, 'imagens');
+    console.log(' Iniciando upload de', images?.length || 0, 'imagens');
     
     if (!images || images.length === 0) {
-      console.log('⚠️ AVISO: Nenhuma imagem foi fornecida para upload');
+      console.log('⚠️ Nenhuma imagem fornecida para upload');
       return [];
     }
     
-    const uploadedPaths = [];
-
-    // Upload cada imagem individualmente
-    for (let i = 0; i < images.length; i++) {
-      const image = images[i];
-      console.log(`📁 Processando imagem ${i + 1}/${images.length}:`, image.id);
+    try {
+      // Converter imagens para File objects
+      const files = [];
       
-      try {
-        // Primeiro vamos verificar a estrutura do objeto image
-        console.log('🔍 ESTRUTURA DA IMAGEM:', image);
-        console.log('🔍 PROPRIEDADES:', Object.keys(image));
-        console.log('🔍 image.uri:', image.uri);
-        console.log('🔍 image.data:', image.data);
+      for (let i = 0; i < images.length; i++) {
+        const image = images[i];
+        console.log(`📁 Processando imagem ${i + 1}/${images.length}:`, image.id);
         
-        // Determinar qual propriedade contém a URI da imagem
-        let imageUri;
-        if (image.uri) {
-          imageUri = image.uri;
-        } else if (image.data) {
-          imageUri = image.data;
-        } else {
-          console.error('❌ Objeto image não tem uri nem data:', image);
-          continue;
+        try {
+          // Determinar a URI da imagem
+          let imageUri;
+          if (image.uri) {
+            imageUri = image.uri;
+          } else if (image.data) {
+            imageUri = image.data;
+          } else {
+            console.error('❌ Objeto image não tem uri nem data:', image);
+            continue;
+          }
+          
+          // Verificar se é data URL válida
+          if (!imageUri.startsWith('data:')) {
+            console.error('❌ URI não é data URL válida:', imageUri.substring(0, 100));
+            continue;
+          }
+          
+          // Separar o header do base64
+          const [header, base64Data] = imageUri.split(',');
+          if (!base64Data) {
+            console.error('❌ Não foi possível separar base64');
+            continue;
+          }
+          
+          // Converter base64 para bytes
+          const byteCharacters = atob(base64Data);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let j = 0; j < byteCharacters.length; j++) {
+            byteNumbers[j] = byteCharacters.charCodeAt(j);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          
+          // Detectar MIME type
+          const mimeMatch = header.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+)/);
+          const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+          
+          // Criar File object
+          const blob = new Blob([byteArray], { type: mimeType });
+          const file = new File([blob], `image_${image.id}.jpg`, { type: mimeType });
+          
+          files.push(file);
+          console.log('✅ File criado:', file.name, file.size, 'bytes');
+          
+        } catch (error) {
+          console.error('❌ Erro ao processar imagem', image.id, ':', error);
         }
-        
-        // Converter base64 para Blob de forma mais robusta
-        console.log('📝 URI da imagem:', imageUri.substring(0, 50) + '...');
-        
-        // Verificar se é data URL válida
-        if (!imageUri.startsWith('data:')) {
-          console.error('❌ URI não é data URL válida:', imageUri.substring(0, 100));
-          continue;
-        }
-        
-        // Separar o header do base64
-        const [header, base64Data] = imageUri.split(',');
-        if (!base64Data) {
-          console.error('❌ Não foi possível separar base64:', imageUri.substring(0, 100));
-          continue;
-        }
-        
-        console.log('📝 Header:', header);
-        console.log('📝 Tamanho do base64:', base64Data.length);
-        
-        // Converter base64 para bytes
-        const byteCharacters = atob(base64Data);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        
-        // Criar Blob com tipo correto
-        const mimeMatch = header.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+)/);
-        const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-        
-        console.log('📝 MIME type detectado:', mimeType);
-        console.log('📝 Tamanho do arquivo:', byteArray.length, 'bytes');
-        
-        const blob = new Blob([byteArray], { type: mimeType });
-        
-        // Criar File object a partir do Blob
-        const file = new File([blob], `image_${image.id}.jpg`, { type: mimeType });
-        
-        console.log('📝 File criado:', file.name, file.size, 'bytes');
-        
-        const formData = new FormData();
-        formData.append('image', file);
-
-        console.log('🌐 Enviando para http://localhost:3001/upload...');
-        const uploadResponse = await fetch('http://localhost:3001/upload', {
-          method: 'POST',
-          body: formData,
-        });
-
-        console.log('📡 Response status:', uploadResponse.status);
-        console.log('📡 Response ok:', uploadResponse.ok);
-
-        if (!uploadResponse.ok) {
-          const errorText = await uploadResponse.text();
-          console.error('❌ Erro no upload da imagem:', image.id, '- Status:', uploadResponse.status, '- Erro:', errorText);
-          continue; // Pula para a próxima imagem
-        }
-
-        const result = await uploadResponse.json();
-        console.log('✅ Upload concluído para', image.id, ':', result);
-        
-        if (result.imagePath) {
-          uploadedPaths.push(result.imagePath);
-          console.log('📂 Caminho adicionado:', result.imagePath);
-        } else {
-          console.error('⚠️ Response não contém imagePath:', result);
-        }
-        
-      } catch (error) {
-        console.error('❌ Erro no upload de', image.id, ':', error);
       }
+      
+      if (files.length === 0) {
+        console.log('⚠️ Nenhum arquivo válido para upload');
+        return [];
+      }
+      
+      // Usar a API autenticada para upload
+      console.log('🌐 Enviando', files.length, 'arquivos...');
+      const result = await uploadAPI.enviarImagens(files);
+      
+      console.log('✅ Upload concluído:', result);
+      return result.images || [];
+      
+    } catch (error) {
+      console.error('❌ Erro no upload:', error);
+      Alert.alert('Erro', 'Falha no upload das imagens');
+      return [];
     }
-
-    console.log('📤 Upload finalizado. Total de caminhos:', uploadedPaths.length);
-    console.log('📂 Caminhos finais:', uploadedPaths);
-    return uploadedPaths;
   };
 
   const handleSubmit = useCallback(async () => {
@@ -525,8 +852,7 @@ export default function MapCityMap() {
       return;
     }
 
-    // Envia para o backend
-    console.log('Enviando marcador com tipo:', problemType);
+    console.log('🔐 Enviando marcador como:', usuario.email, '(', usuario.tipo, ')');
     
     // Mapeia o tipo para um nome mais descritivo
     const nomesPorTipo = {
@@ -541,55 +867,47 @@ export default function MapCityMap() {
     try {
       // Primeiro, fazer upload das imagens se houver
       let imagePaths = [];
-      console.log('🔍 VERIFICAÇÃO: selectedImages length =', selectedImages.length);
-      console.log('🔍 VERIFICAÇÃO: selectedImages =', selectedImages);
+      console.log('🔍 Verificando imagens selecionadas:', selectedImages.length);
       
       if (selectedImages.length > 0) {
         console.log('📤 Fazendo upload de', selectedImages.length, 'imagem(s)...');
         imagePaths = await uploadImages(selectedImages);
         console.log('✅ Upload concluído. Caminhos recebidos:', imagePaths);
-      } else {
-        console.log('ℹ️ Nenhuma imagem selecionada - imagePaths ficará vazio');
       }
 
-      const response = await fetch('http://localhost:3001/lugares', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nome: nomeProblema,
-          descricao: description,
-          tipo: problemType,
-          latitude: clickPosition.lat,
-          longitude: clickPosition.lng,
-          imagePaths: imagePaths // Enviar os caminhos das imagens uploadadas
-        })
-      });
-
-      if (!response.ok) {
-        if (response.status === 413) {
-          throw new Error('Imagens muito grandes. Tente com imagens menores.');
-        }
-        throw new Error(`Erro do servidor: ${response.status}`);
-      }
-
-      const novoLugar = await response.json();
-      console.log('Resposta do backend:', novoLugar);
-      console.log('imagePaths enviados:', imagePaths);
+      // Usar API autenticada para criar lugar
+      const dadosLugar = {
+        nome: nomeProblema,
+        descricao: description,
+        tipo: problemType,
+        latitude: clickPosition.lat,
+        longitude: clickPosition.lng,
+        imagem: imagePaths
+      };
+      
+      console.log('📝 Dados do lugar:', dadosLugar);
+      const novoLugar = await lugaresAPI.criar(dadosLugar);
+      
+      console.log('✅ Lugar criado:', novoLugar);
+      
+      // Adicionar à lista local
       setMarkers(prev => [
         ...prev,
         {
           id: novoLugar.id,
-          lat: novoLugar.latitude,
-          lng: novoLugar.longitude,
-          type: novoLugar.tipo || problemType,
+          lat: clickPosition.lat,
+          lng: clickPosition.lng,
+          type: problemType,
           description: description,
-          images: novoLugar.imagem || [], // Usar dados do backend
+          images: imagePaths,
           resolved: false
         }
       ]);
+      
       Alert.alert('Sucesso', 'Problema reportado com sucesso!');
+      
     } catch (err) {
-      console.error('Erro ao salvar marcador:', err);
+      console.error('❌ Erro ao salvar marcador:', err);
       Alert.alert('Erro', err.message || 'Não foi possível salvar o marcador!');
     }
 
@@ -695,38 +1013,126 @@ export default function MapCityMap() {
       return;
     }
     
-    console.log('Marcando como resolvido:', selectedMarker.id);
+    console.log('🔐 Marcando como resolvido:', selectedMarker.id, 'por', usuario.email);
     
     try {
-      // Atualiza no backend
-      const response = await fetch(`http://localhost:3001/lugares/${selectedMarker.id}/resolver`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' }
-      });
+      // Usar API autenticada para resolver
+      await lugaresAPI.resolver(selectedMarker.id, true);
 
-      if (!response.ok) {
-        throw new Error('Erro ao atualizar no servidor');
-      }
-
-      // Atualiza no frontend
+      // Atualizar no frontend
       setMarkers(prev => {
         const updated = prev.map(marker => 
           marker.id === selectedMarker.id 
             ? { ...marker, resolved: true, resolvedAt: new Date().toISOString() }
             : marker
         );
-        console.log('Marcadores atualizados:', updated);
+        console.log('✅ Marcadores atualizados');
         return updated;
       });
       
       setIsViewModalVisible(false);
       setSelectedMarker(null);
       Alert.alert('Sucesso', 'Problema marcado como resolvido!');
+      
     } catch (error) {
-      console.error('Erro ao marcar como resolvido:', error);
-      Alert.alert('Erro', 'Não foi possível marcar como resolvido. Tente novamente.');
+      console.error('❌ Erro ao marcar como resolvido:', error);
+      Alert.alert('Erro', 'Não foi possível marcar como resolvido');
     }
-  }, [selectedMarker]);
+  }, [selectedMarker, usuario]);
+
+  // Função para deletar marcador (apenas admin)
+  const handleDeleteMarker = useCallback(async () => {
+    if (!selectedMarker) {
+      console.log('Nenhum marcador selecionado');
+      return;
+    }
+    
+    if (usuario.tipo !== 'admin') {
+      Alert.alert('Erro', 'Apenas administradores podem deletar marcadores');
+      return;
+    }
+    
+    Alert.alert(
+      'Confirmar Exclusão',
+      'Tem certeza que deseja deletar este marcador? Esta ação não pode ser desfeita.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Deletar', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              console.log('🗑️ Admin deletando marcador:', selectedMarker.id);
+              await lugaresAPI.deletar(selectedMarker.id);
+              
+              // Remover do frontend
+              setMarkers(prev => prev.filter(marker => marker.id !== selectedMarker.id));
+              
+              setIsViewModalVisible(false);
+              setSelectedMarker(null);
+              Alert.alert('Sucesso', 'Marcador deletado com sucesso!');
+              
+            } catch (error) {
+              console.error('❌ Erro ao deletar marcador:', error);
+              Alert.alert('Erro', 'Não foi possível deletar o marcador');
+            }
+          }
+        }
+      ]
+    );
+  }, [selectedMarker, usuario]);
+
+  // Deletar marcador (admin ou ONG responsável pela área)
+  const handleDeleteMarkerWithArea = useCallback(async (markerId) => {
+    if (!usuario) return;
+
+    try {
+      // Admin pode deletar qualquer marcador
+      if (usuario.tipo === 'admin') {
+        console.log('🗑️ Admin deletando marcador:', markerId);
+        await lugaresAPI.deletar(markerId);
+        setMarkers(prev => prev.filter(marker => marker.id !== markerId));
+        Alert.alert('Sucesso', 'Marcador deletado com sucesso!');
+        return;
+      }
+
+      // ONG pode deletar apenas marcadores em sua área
+      if (usuario.tipo === 'ong') {
+        console.log('🗑️ ONG tentando deletar marcador:', markerId);
+        const resultado = await areasAPI.deletarMarcadorEmArea(markerId);
+        
+        if (resultado.sucesso) {
+          setMarkers(prev => prev.filter(marker => marker.id !== markerId));
+          Alert.alert('Sucesso', 'Marcador deletado com sucesso!');
+        } else {
+          Alert.alert('Erro', resultado.message || 'Este marcador não está na sua área de responsabilidade.');
+        }
+        return;
+      }
+
+      Alert.alert('Erro', 'Você não tem permissão para deletar marcadores.');
+      
+    } catch (error) {
+      console.error('❌ Erro ao deletar marcador:', error);
+      Alert.alert('Erro', 'Não foi possível deletar o marcador.');
+    }
+  }, [usuario]);
+
+  // Marcar notificação como lida
+  const marcarNotificacaoLida = useCallback(async (notificacaoId) => {
+    try {
+      await areasAPI.marcarNotificacaoLida(notificacaoId);
+      setNotificacoes(prev => 
+        prev.map(notif => 
+          notif.id === notificacaoId 
+            ? { ...notif, lida: true }
+            : notif
+        )
+      );
+    } catch (error) {
+      console.error('❌ Erro ao marcar notificação como lida:', error);
+    }
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -734,7 +1140,85 @@ export default function MapCityMap() {
         onMapClick={handleMapClick}
         onMarkerClick={handleMarkerClick}
         markers={markers}
+        areas={areas}
+        areaPoints={areaPoints}
+        areaDrawingMode={areaDrawingMode}
       />
+      
+      {addressServiceFailed && (
+        <View style={styles.warningBanner}>
+          <Text style={styles.warningText}>
+            ⚠️ Serviço de endereços indisponível. Mostrando coordenadas.
+          </Text>
+        </View>
+      )}
+
+      {/* Interface para ONGs */}
+      {usuario && usuario.tipo === 'ong' && (
+        <View style={styles.ongInterface}>
+          <View style={styles.ongHeader}>
+            <Text style={styles.ongTitle}>🏢 {usuario.nome || usuario.email}</Text>
+            <View style={styles.ongActions}>
+              {/* Botão de notificações */}
+              <TouchableOpacity 
+                style={[styles.ongButton, styles.notificationButton]}
+                onPress={() => setIsNotificationModalVisible(true)}
+              >
+                <Text style={styles.ongButtonText}>🔔</Text>
+                {notificacoes.filter(n => !n.lida).length > 0 && (
+                  <View style={styles.notificationBadge}>
+                    <Text style={styles.badgeText}>
+                      {notificacoes.filter(n => !n.lida).length}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              {/* Botão para gerenciar áreas */}
+              <TouchableOpacity 
+                style={[styles.ongButton, styles.areaButton]}
+                onPress={() => setIsAreaModalVisible(true)}
+              >
+                <Text style={styles.ongButtonText}>📍</Text>
+              </TouchableOpacity>
+
+              {/* Botão para iniciar marcação de área */}
+              {!areaDrawingMode ? (
+                <TouchableOpacity 
+                  style={[styles.ongButton, styles.drawButton]}
+                  onPress={iniciarCriacaoArea}
+                >
+                  <Text style={styles.ongButtonText}>✏️</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.drawingControls}>
+                  <TouchableOpacity 
+                    style={[styles.ongButton, styles.finishButton]}
+                    onPress={finalizarCriacaoArea}
+                  >
+                    <Text style={styles.ongButtonText}>✅</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.ongButton, styles.cancelButton]}
+                    onPress={cancelarCriacaoArea}
+                  >
+                    <Text style={styles.ongButtonText}>❌</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Modo de desenho ativo */}
+          {areaDrawingMode && (
+            <View style={styles.drawingStatus}>
+              <Text style={styles.drawingText}>
+                📍 Clique no mapa para marcar pontos da área ({areaPoints.length} pontos)
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
       
       <Modal
         visible={isModalVisible}
@@ -1144,7 +1628,128 @@ export default function MapCityMap() {
                     <Text style={styles.resolveButtonText}>✓ Marcar como Resolvido</Text>
                   </TouchableOpacity>
                 )}
+
+                {/* Botão de deletar para administradores e ONGs */}
+                {(usuario.tipo === 'admin' || usuario.tipo === 'ong') && (
+                  <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={() => handleDeleteMarkerWithArea(selectedMarker.id)}
+                  >
+                    <Text style={styles.deleteButtonText}>
+                      🗑️ Deletar Marcador {usuario.tipo === 'admin' ? '(Admin)' : '(ONG)'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </>
+            )}
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Modal de Áreas - ONGs */}
+      <Modal
+        visible={isAreaModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setIsAreaModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={() => setIsAreaModalVisible(false)}
+            >
+              <Text style={styles.closeButtonText}>×</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Minhas Áreas</Text>
+            <View style={styles.headerSpacer} />
+          </View>
+          
+          <ScrollView style={styles.modalContent}>
+            {areas.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateText}>📍</Text>
+                <Text style={styles.emptyStateTitle}>Nenhuma área definida</Text>
+                <Text style={styles.emptyStateDescription}>
+                  Use o botão ✏️ no mapa para marcar sua área de responsabilidade
+                </Text>
+              </View>
+            ) : (
+              areas.map((area, index) => (
+                <View key={area.id || index} style={styles.areaItem}>
+                  <View style={styles.areaHeader}>
+                    <Text style={styles.areaName}>{area.nome}</Text>
+                    <Text style={styles.areaDate}>
+                      {new Date(area.criado_em).toLocaleDateString()}
+                    </Text>
+                  </View>
+                  <Text style={styles.areaPoints}>
+                    📍 {area.coordenadas?.length || 0} pontos
+                  </Text>
+                  {area.descricao && (
+                    <Text style={styles.areaDescription}>{area.descricao}</Text>
+                  )}
+                </View>
+              ))
+            )}
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Modal de Notificações - ONGs */}
+      <Modal
+        visible={isNotificationModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setIsNotificationModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={() => setIsNotificationModalVisible(false)}
+            >
+              <Text style={styles.closeButtonText}>×</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Notificações</Text>
+            <View style={styles.headerSpacer} />
+          </View>
+          
+          <ScrollView style={styles.modalContent}>
+            {notificacoes.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateText}>🔔</Text>
+                <Text style={styles.emptyStateTitle}>Nenhuma notificação</Text>
+                <Text style={styles.emptyStateDescription}>
+                  Você receberá notificações quando novos problemas forem reportados em suas áreas
+                </Text>
+              </View>
+            ) : (
+              notificacoes.map((notificacao) => (
+                <TouchableOpacity
+                  key={notificacao.id}
+                  style={[
+                    styles.notificationItem,
+                    !notificacao.lida && styles.notificationUnread
+                  ]}
+                  onPress={() => marcarNotificacaoLida(notificacao.id)}
+                >
+                  <View style={styles.notificationHeader}>
+                    <Text style={styles.notificationTitle}>
+                      {notificacao.titulo}
+                    </Text>
+                    <Text style={styles.notificationDate}>
+                      {new Date(notificacao.criado_em).toLocaleDateString()}
+                    </Text>
+                  </View>
+                  <Text style={styles.notificationMessage}>
+                    {notificacao.mensagem}
+                  </Text>
+                  {!notificacao.lida && (
+                    <View style={styles.unreadIndicator} />
+                  )}
+                </TouchableOpacity>
+              ))
             )}
           </ScrollView>
         </View>
@@ -1370,5 +1975,235 @@ const styles = {
     fontSize: 16,
     fontWeight: '600',
     color: '#ffffff',
+  },
+  deleteButton: {
+    backgroundColor: '#EF4444',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 16,
+    marginTop: 8,
+  },
+  deleteButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  warningBanner: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    right: 10,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    zIndex: 1000,
+  },
+  warningText: {
+    fontSize: 12,
+    color: '#92400E',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  // Estilos para interface ONG
+  ongInterface: {
+    position: 'absolute',
+    top: 60,
+    left: 10,
+    right: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 12,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    zIndex: 1000,
+  },
+  ongHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  ongTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    flex: 1,
+  },
+  ongActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  ongButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
+    elevation: 3,
+  },
+  ongButtonText: {
+    fontSize: 18,
+  },
+  notificationButton: {
+    backgroundColor: '#3B82F6',
+    position: 'relative',
+  },
+  areaButton: {
+    backgroundColor: '#10B981',
+  },
+  drawButton: {
+    backgroundColor: '#F59E0B',
+  },
+  finishButton: {
+    backgroundColor: '#059669',
+  },
+  cancelButton: {
+    backgroundColor: '#EF4444',
+  },
+  drawingControls: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#EF4444',
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  drawingStatus: {
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  drawingText: {
+    fontSize: 12,
+    color: '#92400E',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  // Estilos para modais de área e notificações
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  emptyStateText: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  emptyStateDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  areaItem: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  areaHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  areaName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    flex: 1,
+  },
+  areaDate: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  areaPoints: {
+    fontSize: 14,
+    color: '#059669',
+    marginBottom: 4,
+  },
+  areaDescription: {
+    fontSize: 14,
+    color: '#4B5563',
+    lineHeight: 18,
+  },
+  notificationItem: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    position: 'relative',
+  },
+  notificationUnread: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#3B82F6',
+  },
+  notificationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  notificationTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    flex: 1,
+  },
+  notificationDate: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  notificationMessage: {
+    fontSize: 14,
+    color: '#4B5563',
+    lineHeight: 18,
+  },
+  unreadIndicator: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#3B82F6',
   },
 };
