@@ -69,7 +69,14 @@ cd ..
 ### ⚙️ **Configuração do Backend**
 
 ```bash
-# 1. Configure o banco de dados MySQL
+# 1. IMPORTANTE: Configure a segurança primeiro
+cd backend
+# Windows:
+setup-security.bat
+# Linux/Mac:
+chmod +x setup-security.sh && ./setup-security.sh
+
+# 2. Configure o banco de dados MySQL
 # Execute os scripts SQL em /backend/sql/ na seguinte ordem:
 # - create_usuarios.sql
 # - create_lugares.sql
@@ -77,15 +84,32 @@ cd ..
 # - create_areas_responsabilidade.sql
 # - add_area_approval_system.sql
 
-# 2. Inicie o servidor backend
-cd backend
-npm start
-# Servidor rodará na porta 3000
+# 3. IMPORTANTE: Configure sua senha do banco no arquivo .env:
+# DB_PASSWORD=sua_senha_mysql_aqui
 
-# 3. Em outro terminal, inicie o frontend
+# 4. Inicie o servidor backend
+npm start
+# Servidor rodará na porta 3001
+
+# 5. Em outro terminal, inicie o frontend
 cd ..
 npm start
 ```
+
+### 🔒 **SEGURANÇA OBRIGATÓRIA**
+
+⚠️ **ANTES DE USAR:** Execute o script de segurança para gerar chaves seguras!
+
+```bash
+# Gera JWT_SECRET seguro e configura .env automaticamente
+cd backend && setup-security.bat
+```
+
+🔐 **Para produção:**
+- Leia `SECURITY.md` antes do deploy
+- Configure senhas fortes no .env
+- Use HTTPS sempre
+- Configure CORS apenas para seus domínios
 
 ### ⚙️ **Configuração das Dependências**
 

@@ -107,10 +107,12 @@ async function setupDatabase() {
     });
 
     console.log('✅ Banco de dados configurado com sucesso!');
-    console.log('📝 Usuários de teste criados:');
-    console.log('   👑 Admin: admin@mapcity.com (senha: 123456)');
-    console.log('   👤 Usuário: usuario@teste.com (senha: 123456)');
-    console.log('   🏢 ONG: gestor@ecoverde.org (senha: 123456)');
+    console.log('📝 Usuários de DESENVOLVIMENTO criados:');
+    console.log('   ⚠️  IMPORTANTE: Mude essas senhas em produção!');
+    console.log('   👑 Admin: admin@localhost.dev (senha dev: 123456)');
+    console.log('   👤 Usuário: teste@localhost.dev (senha dev: 123456)'); 
+    console.log('   🏢 ONG: ong@localhost.dev (senha dev: 123456)');
+    console.log('   🔒 Para produção: use senhas fortes e emails reais!');
 
   } catch (error) {
     console.error('❌ Erro ao configurar banco de dados:', error);

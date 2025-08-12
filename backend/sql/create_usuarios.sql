@@ -40,13 +40,19 @@ ALTER TABLE usuarios
 ADD CONSTRAINT fk_usuario_ong 
 FOREIGN KEY (ong_id) REFERENCES ongs(id) ON DELETE SET NULL;
 
--- Inserir usuário administrador padrão (senha: 123456)
-INSERT IGNORE INTO usuarios (nome, email, senha, tipo) VALUES 
-('Administrador', 'admin@mapcity.com', '$2b$10$W2xqRbCzdQgyH1lCSqLU8u80mhiJAlhYNJ7HrCLGdT.QWZswIE6G.', 'admin');
+-- ⚠️ IMPORTANTE: Estes são usuários de DESENVOLVIMENTO apenas!
+-- ❌ NUNCA use essas senhas em produção!
+-- ✅ Para produção, crie usuários com senhas fortes através da aplicação
 
--- Inserir usuário teste (senha: 123456)
+-- Usuário administrador padrão (senha desenvolvimento: 123456)
+-- ⚠️ MUDE ESTA SENHA IMEDIATAMENTE em produção!
 INSERT IGNORE INTO usuarios (nome, email, senha, tipo) VALUES 
-('Usuário Teste', 'usuario@teste.com', '$2b$10$W2xqRbCzdQgyH1lCSqLU8u80mhiJAlhYNJ7HrCLGdT.QWZswIE6G.', 'usuario');
+('Admin Desenvolvimento', 'admin@localhost.dev', '$2b$10$W2xqRbCzdQgyH1lCSqLU8u80mhiJAlhYNJ7HrCLGdT.QWZswIE6G.', 'admin');
+
+-- Usuário teste (senha desenvolvimento: 123456)  
+-- ⚠️ REMOVA EM PRODUÇÃO!
+INSERT IGNORE INTO usuarios (nome, email, senha, tipo) VALUES 
+('Usuario Teste', 'teste@localhost.dev', '$2b$10$W2xqRbCzdQgyH1lCSqLU8u80mhiJAlhYNJ7HrCLGdT.QWZswIE6G.', 'usuario');
 
 -- Inserir ONG teste
 INSERT IGNORE INTO ongs (nome, descricao, email, area_atuacao) VALUES 

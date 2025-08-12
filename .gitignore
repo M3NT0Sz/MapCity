@@ -16,13 +16,21 @@ expo-env.d.ts
 # Testing
 /coverage
 
-# Environment files
+# Environment files - CRITICAMENTE IMPORTANTES
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 .env*.local
+backend/.env
+frontend/.env
+
+# Configurações sensíveis
+config/secrets.js
+config/database.js
+secrets/
+credentials/
 
 # Logs
 npm-debug.log*
@@ -68,9 +76,11 @@ Desktop.ini
 # TypeScript
 *.tsbuildinfo
 
-# Backend uploads (if any)
+# Backend uploads e arquivos sensíveis
 uploads/
 temp/
+backup/
+dumps/
 
 # IDE files
 .vscode/
@@ -80,3 +90,8 @@ temp/
 
 # Cache
 .cache/
+
+# Arquivos de backup com dados sensíveis
+*.backup
+*.bak
+*.sql.backup

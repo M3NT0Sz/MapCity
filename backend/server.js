@@ -7,19 +7,29 @@ const fs = require('fs');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
+// Carregar variáveis de ambiente
+require('dotenv').config();
+
 const app = express();
 
-// Configurações
-const JWT_SECRET = process.env.JWT_SECRET || 'sua_chave_secreta_super_segura_aqui';
-const SALT_ROUNDS = 10;
+// Configurações seguras usando variáveis de ambiente
+const JWT_SECRET = process.env.JWT_SECRET;
+const SALT_ROUNDS = parseInt(process.env.SALT_ROUNDS) || 10;
 const PORT = process.env.PORT || 3001;
+
+// Verificação de segurança
+if (!JWT_SECRET || JWT_SECRET === 'sua_chave_secreta_super_segura_aqui') {
+  console.error('❌ ERRO DE SEGURANÇA: JWT_SECRET não está configurado adequadamente!');
+  console.error('🔧 Configure a variável JWT_SECRET no arquivo .env');
+  process.exit(1);
+}
 
 // =============================================================================
 // MIDDLEWARE
 // =============================================================================
 
 app.use(cors({
-  origin: ['http://localhost:8081', 'http://localhost:3000', 'http://localhost:8083', 'http://localhost:8082'],
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:8081', 'http://localhost:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -34,9 +44,11 @@ app.use((req, res, next) => {
 });
 
 // Configurar multer para upload de arquivos
+const uploadDir = process.env.UPLOAD_DIR || './uploads';
+const maxFileSize = parseInt(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024; // 5MB padrão
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = './uploads';
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -50,7 +62,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ 
   storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limite
+  limits: { fileSize: maxFileSize },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
@@ -61,18 +73,18 @@ const upload = multer({
 });
 
 // Servir arquivos estáticos
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(uploadDir));
 
 // =============================================================================
 // BANCO DE DADOS
 // =============================================================================
 
 const pool = mysql.createPool({
-  host: 'localhost',
-  user: 'root',
-  password: '',
-  database: 'mapcity',
-  connectionLimit: 10,
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'mapcity',
+  connectionLimit: parseInt(process.env.DB_CONNECTION_LIMIT) || 10,
   waitForConnections: true,
   queueLimit: 0
 });
