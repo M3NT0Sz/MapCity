@@ -99,17 +99,14 @@ const verificarToken = (req, res, next) => {
   console.log('🔑 Token recebido:', token ? 'Presente' : 'Ausente');
   
   if (!token) {
-    console.log('❌ Token não fornecido');
     return res.status(401).json({ error: 'Token de acesso necessário' });
   }
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    console.log('✅ Token válido para usuário:', decoded.id, decoded.tipo);
     req.usuario = decoded;
     next();
   } catch (error) {
-    console.log('❌ Token inválido:', error.message);
     return res.status(401).json({ error: 'Token inválido' });
   }
 };
@@ -183,7 +180,6 @@ function criarNotificacaoNovoMarcador(lugarId, latitude, longitude) {
                 if (err) {
                   console.error('Erro ao criar notificação:', err);
                 } else {
-                  console.log('✅ Notificação criada para ONG:', area.ong_id);
                 }
               }
             );
@@ -495,7 +491,7 @@ app.delete('/lugares/:id', verificarToken, verificarPermissao(['admin', 'ong']),
       
       pool.query(
         'SELECT coordenadas FROM areas_responsabilidade WHERE ong_id = ? AND ativa = true',
-        [req.usuario.ong_id],
+        [req.usuario.id],
         (err, areaResults) => {
           if (err) {
             console.error('Erro ao buscar áreas da ONG:', err);
@@ -550,11 +546,6 @@ app.get('/areas/publicas', verificarToken, (req, res) => {
         return res.status(500).json({ error: 'Erro interno do servidor' });
       }
       
-      console.log('📊 Dados de áreas públicas:', results.length, 'registros');
-      if (results.length > 0) {
-        console.log('📊 Primeiro registro:', JSON.stringify(results[0], null, 2));
-      }
-      
       res.json(results);
     }
   );
@@ -562,7 +553,6 @@ app.get('/areas/publicas', verificarToken, (req, res) => {
 
 // ROTAS DE ÁREAS (ONGs)
 app.get('/areas', verificarToken, verificarPermissao(['ong']), (req, res) => {
-  console.log('🔍 GET /areas chamado por usuário:', req.usuario);
   
   pool.query(
     `SELECT ar.*, u.nome as ong_nome, ar.criada_em as data_criacao 
@@ -570,7 +560,7 @@ app.get('/areas', verificarToken, verificarPermissao(['ong']), (req, res) => {
      LEFT JOIN usuarios u ON ar.ong_id = u.id
      WHERE ar.ong_id = ? AND ar.ativa = true 
      ORDER BY ar.criada_em DESC`,
-    [req.usuario.ong_id],
+    [req.usuario.id],
     (err, results) => {
       if (err) {
         console.error('❌ Erro ao buscar áreas:', err);
@@ -578,8 +568,6 @@ app.get('/areas', verificarToken, verificarPermissao(['ong']), (req, res) => {
         console.error('❌ SQL Error Message:', err.sqlMessage);
         return res.status(500).json({ error: 'Erro interno do servidor' });
       }
-      
-      console.log('✅ Áreas encontradas:', results.length);
       res.json(results);
     }
   );
@@ -594,7 +582,7 @@ app.post('/areas', verificarToken, verificarPermissao(['ong']), (req, res) => {
   
   pool.query(
     'INSERT INTO areas_responsabilidade (ong_id, nome, descricao, coordenadas, status) VALUES (?, ?, ?, ?, ?)',
-    [req.usuario.ong_id, nome, descricao, JSON.stringify(coordenadas), 'pendente'],
+    [req.usuario.id, nome, descricao, JSON.stringify(coordenadas), 'pendente'],
     (err, result) => {
       if (err) {
         console.error('Erro ao criar área:', err);
@@ -616,7 +604,7 @@ app.put('/areas/:id', verificarToken, verificarPermissao(['ong']), (req, res) =>
   
   pool.query(
     'UPDATE areas_responsabilidade SET nome = ?, descricao = ?, coordenadas = ? WHERE id = ? AND ong_id = ?',
-    [nome, descricao, JSON.stringify(coordenadas), id, req.usuario.ong_id],
+    [nome, descricao, JSON.stringify(coordenadas), id, req.usuario.id],
     (err, result) => {
       if (err) {
         console.error('Erro ao atualizar área:', err);
@@ -635,11 +623,10 @@ app.put('/areas/:id', verificarToken, verificarPermissao(['ong']), (req, res) =>
 // Endpoint para ONG excluir suas próprias áreas
 app.delete('/areas/:id', verificarToken, verificarPermissao(['ong']), (req, res) => {
   const { id } = req.params;
-  console.log('🔄 ONG tentando excluir área:', id, 'ONG ID:', req.usuario.ong_id);
   
   pool.query(
     'DELETE FROM areas_responsabilidade WHERE id = ? AND ong_id = ?',
-    [id, req.usuario.ong_id],
+    [id, req.usuario.id],
     (err, result) => {
       if (err) {
         console.error('❌ Erro da ONG ao excluir área:', err);
@@ -647,11 +634,9 @@ app.delete('/areas/:id', verificarToken, verificarPermissao(['ong']), (req, res)
       }
       
       if (result.affectedRows === 0) {
-        console.log('⚠️ Área não encontrada ou sem permissão:', id, 'ONG:', req.usuario.ong_id);
+        console.log('⚠️ Área não encontrada ou sem permissão:', id, 'ONG:', req.usuario.id);
         return res.status(404).json({ error: 'Área não encontrada ou você não tem permissão para excluí-la' });
       }
-      
-      console.log('✅ Área excluída com sucesso pela ONG:', id);
       res.json({ message: 'Área excluída com sucesso' });
     }
   );
@@ -662,7 +647,6 @@ app.delete('/areas/:id', verificarToken, verificarPermissao(['ong']), (req, res)
 // =============================================================================
 
 app.get('/notificacoes', verificarToken, verificarPermissao(['ong']), (req, res) => {
-  console.log('🔍 GET /notificacoes chamado por usuário:', req.usuario);
   
   pool.query(
     `SELECT n.*, a.nome as area_nome, l.descricao as marcador_descricao,
@@ -673,18 +657,13 @@ app.get('/notificacoes', verificarToken, verificarPermissao(['ong']), (req, res)
      WHERE n.ong_id = ? 
      ORDER BY n.criada_em DESC 
      LIMIT 50`,
-    [req.usuario.ong_id],
+    [req.usuario.id],
     (err, results) => {
       if (err) {
         console.error('❌ Erro ao buscar notificações:', err);
         console.error('❌ SQL Error Code:', err.code);
         console.error('❌ SQL Error Message:', err.sqlMessage);
         return res.status(500).json({ error: 'Erro interno do servidor' });
-      }
-      
-      console.log('📊 Dados de notificações:', results.length, 'registros');
-      if (results.length > 0) {
-        console.log('📊 Primeira notificação:', JSON.stringify(results[0], null, 2));
       }
       
       res.json(results);
@@ -704,7 +683,7 @@ app.put('/notificacoes/:id/lida', verificarToken, verificarPermissao(['ong', 'ad
     params = [id];
   } else {
     query = 'UPDATE notificacoes_ong SET lida = true WHERE id = ? AND ong_id = ?';
-    params = [id, req.usuario.ong_id];
+    params = [id, req.usuario.id];
   }
   
   pool.query(query, params, (err, result) => {
@@ -798,7 +777,6 @@ app.get('/admin/areas/pendentes', verificarToken, verificarPermissao(['admin']),
 // Aprovar área de responsabilidade (apenas admin)
 app.put('/admin/areas/:id/aprovar', verificarToken, verificarPermissao(['admin']), (req, res) => {
   const { id } = req.params;
-  console.log('🔄 Admin tentando aprovar área:', id, 'Usuario:', req.usuario.tipo);
 
   pool.query(
     'UPDATE areas_responsabilidade SET status = ?, aprovada_por = ?, data_aprovacao = NOW() WHERE id = ?',
@@ -813,8 +791,6 @@ app.put('/admin/areas/:id/aprovar', verificarToken, verificarPermissao(['admin']
         console.log('⚠️ Área não encontrada para aprovar:', id);
         return res.status(404).json({ error: 'Área não encontrada' });
       }
-
-      console.log('✅ Área aprovada com sucesso:', id);
       res.json({ message: 'Área aprovada com sucesso' });
     }
   );
@@ -849,7 +825,6 @@ app.put('/admin/areas/:id/rejeitar', verificarToken, verificarPermissao(['admin'
 
 // Listar todas as áreas (apenas admin)
 app.get('/admin/areas', verificarToken, verificarPermissao(['admin']), (req, res) => {
-  console.log('🔍 GET /admin/areas chamado por admin');
   
   pool.query(
     `SELECT a.*, u.nome as ong_nome, u.email as ong_email,
@@ -863,8 +838,6 @@ app.get('/admin/areas', verificarToken, verificarPermissao(['admin']), (req, res
         console.error('❌ Erro ao buscar todas as áreas:', err);
         return res.status(500).json({ error: 'Erro interno do servidor' });
       }
-      
-      console.log(`✅ Encontradas ${results.length} áreas`);
       res.json(results);
     }
   );
@@ -873,10 +846,8 @@ app.get('/admin/areas', verificarToken, verificarPermissao(['admin']), (req, res
 // Endpoint para admin excluir área
 app.delete('/admin/areas/:id', verificarToken, (req, res) => {
   const { id } = req.params;
-  console.log('🔄 Admin tentando excluir área:', id, 'Usuario:', req.usuario.tipo);
   
   if (req.usuario.tipo !== 'admin') {
-    console.log('❌ Acesso negado - usuário não é admin:', req.usuario.tipo);
     return res.status(403).json({ error: 'Acesso negado. Apenas administradores podem excluir áreas.' });
   }
 
@@ -893,8 +864,6 @@ app.delete('/admin/areas/:id', verificarToken, (req, res) => {
         console.log('⚠️ Área não encontrada para excluir:', id);
         return res.status(404).json({ error: 'Área não encontrada' });
       }
-      
-      console.log('✅ Área excluída com sucesso pelo admin:', id);
       res.json({ message: 'Área excluída com sucesso' });
     }
   );
@@ -990,20 +959,15 @@ app.delete('/auth/conta', verificarToken, (req, res) => {
 
 // Criar denúncia de marcador
 app.post('/denuncias', verificarToken, (req, res) => {
-  console.log('🚨 Iniciando criação de denúncia');
-  console.log('📝 Dados recebidos:', req.body);
-  console.log('👤 Usuário logado:', req.usuario);
   
   const { marcador_id, motivo, descricao } = req.body;
   const denunciante_id = req.usuario.id;
 
   if (!marcador_id || !motivo) {
-    console.log('❌ Dados incompletos:', { marcador_id, motivo });
     return res.status(400).json({ error: 'Marcador ID e motivo são obrigatórios' });
   }
 
   // Verificar se o usuário já denunciou este marcador
-  console.log('🔍 Verificando denúncia existente para marcador:', marcador_id, 'usuário:', denunciante_id);
   pool.query(
     'SELECT id FROM denuncias WHERE marcador_id = ? AND denunciante_id = ?',
     [marcador_id, denunciante_id],
@@ -1012,15 +976,12 @@ app.post('/denuncias', verificarToken, (req, res) => {
         console.error('❌ Erro ao verificar denúncia existente:', error);
         return res.status(500).json({ error: 'Erro interno do servidor' });
       }
-
-      console.log('📊 Denúncias existentes encontradas:', existingResults.length);
       if (existingResults.length > 0) {
         console.log('⚠️ Usuário já denunciou este marcador');
         return res.status(400).json({ error: 'Você já denunciou este marcador' });
       }
 
       // Buscar informações do marcador
-      console.log('🎯 Buscando informações do marcador:', marcador_id);
       pool.query(
         'SELECT * FROM lugares WHERE id = ?',
         [marcador_id],
@@ -1037,10 +998,8 @@ app.post('/denuncias', verificarToken, (req, res) => {
           }
 
           const marcador = markerResults[0];
-          console.log('✅ Marcador encontrado:', { id: marcador.id, nome: marcador.nome, tipo: marcador.tipo });
 
           // Buscar ONG responsável pela área onde o marcador está localizado
-          console.log('🔍 Buscando ONG responsável pela área do marcador...');
           pool.query(
             'SELECT id, ong_id, nome, coordenadas FROM areas_responsabilidade WHERE ativa = true AND status = ?',
             ['aprovada'],
@@ -1064,7 +1023,6 @@ app.post('/denuncias', verificarToken, (req, res) => {
                   if (pontoNaArea(ponto, coordenadas)) {
                     ongResponsavelId = area.ong_id;
                     areaNome = area.nome;
-                    console.log(`✅ ONG responsável encontrada: ${ongResponsavelId} (Área: ${areaNome})`);
                   }
                 } catch (e) {
                   console.error('Erro ao processar coordenadas da área:', e);
@@ -1076,19 +1034,14 @@ app.post('/denuncias', verificarToken, (req, res) => {
               }
 
               // Criar a denúncia com ou sem ONG responsável
-              console.log('💾 Criando denúncia no banco de dados...');
-              console.log('📝 Parâmetros:', { marcador_id, denunciante_id, ong_responsavel_id: ongResponsavelId, motivo, descricao });
               pool.query(
-                `INSERT INTO denuncias (marcador_id, denunciante_id, autor_marcador_id, ong_responsavel_id, motivo, descricao, status, criada_em) 
-                 VALUES (?, ?, NULL, ?, ?, ?, 'pendente', NOW())`,
+                'INSERT INTO denuncias (marcador_id, denunciante_id, autor_marcador_id, ong_responsavel_id, motivo, descricao, status, criada_em) VALUES (?, ?, NULL, ?, ?, ?, "pendente", NOW())',
                 [marcador_id, denunciante_id, ongResponsavelId, motivo, descricao || null],
                 (error, result) => {
                   if (error) {
                     console.error('❌ Erro ao criar denúncia:', error);
                     return res.status(500).json({ error: 'Erro ao criar denúncia' });
                   }
-
-                  console.log(`✅ Nova denúncia criada com sucesso: ${result.insertId} para marcador ${marcador_id}`);
                   res.status(201).json({ 
                     message: 'Denúncia enviada com sucesso',
                     denunciaId: result.insertId 
@@ -1100,18 +1053,14 @@ app.post('/denuncias', verificarToken, (req, res) => {
 
           // Função auxiliar para criar denúncia sem ONG
           function criarDenunciaSemONG() {
-            console.log('💾 Criando denúncia no banco de dados (sem ONG responsável)...');
             pool.query(
-              `INSERT INTO denuncias (marcador_id, denunciante_id, autor_marcador_id, ong_responsavel_id, motivo, descricao, status, criada_em) 
-               VALUES (?, ?, NULL, NULL, ?, ?, 'pendente', NOW())`,
+              'INSERT INTO denuncias (marcador_id, denunciante_id, autor_marcador_id, ong_responsavel_id, motivo, descricao, status, criada_em) VALUES (?, ?, NULL, NULL, ?, ?, "pendente", NOW())',
               [marcador_id, denunciante_id, motivo, descricao || null],
               (error, result) => {
                 if (error) {
                   console.error('❌ Erro ao criar denúncia:', error);
                   return res.status(500).json({ error: 'Erro ao criar denúncia' });
                 }
-
-                console.log(`✅ Nova denúncia criada com sucesso: ${result.insertId} para marcador ${marcador_id}`);
                 res.status(201).json({ 
                   message: 'Denúncia enviada com sucesso',
                   denunciaId: result.insertId 
@@ -1127,27 +1076,13 @@ app.post('/denuncias', verificarToken, (req, res) => {
 
 // Listar denúncias (Admin e ONGs)
 app.get('/denuncias', verificarToken, (req, res) => {
-  let query = `
-    SELECT d.*, 
-           l.nome as marcador_titulo,
-           l.descricao as marcador_descricao,
-           l.latitude,
-           l.longitude,
-           u_denunciante.nome as denunciante_nome,
-           u_denunciante.email as denunciante_email,
-           u_autor.nome as autor_nome,
-           u_autor.email as autor_email
-    FROM denuncias d
-    JOIN lugares l ON d.marcador_id = l.id
-    JOIN usuarios u_denunciante ON d.denunciante_id = u_denunciante.id
-    LEFT JOIN usuarios u_autor ON d.autor_marcador_id = u_autor.id
-  `;
+  let query = 'SELECT d.*, l.nome as marcador_titulo, l.descricao as marcador_descricao, l.latitude, l.longitude, u_denunciante.nome as denunciante_nome, u_denunciante.email as denunciante_email, u_autor.nome as autor_nome, u_autor.email as autor_email FROM denuncias d JOIN lugares l ON d.marcador_id = l.id JOIN usuarios u_denunciante ON d.denunciante_id = u_denunciante.id LEFT JOIN usuarios u_autor ON d.autor_marcador_id = u_autor.id';
   let queryParams = [];
 
   if (req.usuario.tipo === 'ong') {
     // ONGs veem apenas denúncias de suas áreas
     query += ' WHERE d.ong_responsavel_id = ?';
-    queryParams.push(req.usuario.ong_id);
+    queryParams.push(req.usuario.id);
   } else if (req.usuario.tipo !== 'admin') {
     return res.status(403).json({ error: 'Acesso negado' });
   }
@@ -1159,8 +1094,6 @@ app.get('/denuncias', verificarToken, (req, res) => {
       console.error('Erro ao buscar denúncias:', error);
       return res.status(500).json({ error: 'Erro interno do servidor' });
     }
-
-    console.log(`📋 Denúncias encontradas: ${results.length}`);
     res.json(results);
   });
 });
@@ -1176,17 +1109,12 @@ app.put('/denuncias/:id/:acao', verificarToken, (req, res) => {
   }
 
   // Verificar se a denúncia existe e se o usuário tem permissão
-  let checkQuery = `
-    SELECT d.*
-    FROM denuncias d
-    JOIN lugares l ON d.marcador_id = l.id
-    WHERE d.id = ?
-  `;
+  let checkQuery = 'SELECT d.* FROM denuncias d JOIN lugares l ON d.marcador_id = l.id WHERE d.id = ?';
   let checkParams = [id];
 
   if (req.usuario.tipo === 'ong') {
     checkQuery += ' AND d.ong_responsavel_id = ?';
-    checkParams.push(req.usuario.ong_id);
+    checkParams.push(req.usuario.id);
   } else if (req.usuario.tipo !== 'admin') {
     return res.status(403).json({ error: 'Acesso negado' });
   }
@@ -1208,7 +1136,6 @@ app.put('/denuncias/:id/:acao', verificarToken, (req, res) => {
     }
 
     const novoStatus = acao === 'aceitar' ? 'aceita' : 'rejeitada';
-    console.log(`🔄 Processando denúncia ID ${id} - Ação: ${acao} - Novo status: ${novoStatus}`);
 
     // Atualizar denúncia
     pool.query(
@@ -1220,10 +1147,7 @@ app.put('/denuncias/:id/:acao', verificarToken, (req, res) => {
           return res.status(500).json({ error: 'Erro ao processar denúncia' });
         }
 
-        console.log(`✅ Denúncia atualizada no banco - ID: ${id}, Status: ${novoStatus}`);
-
         if (acao === 'aceitar') {
-          console.log(`🔄 Processando aceitação da denúncia para marcador: ${denuncia.marcador_id}`);
           // Remover o marcador denunciado
           pool.query(
             'DELETE FROM lugares WHERE id = ?',
@@ -1232,7 +1156,7 @@ app.put('/denuncias/:id/:acao', verificarToken, (req, res) => {
               if (error) {
                 console.error('❌ Erro ao remover marcador:', error);
               } else {
-                console.log(`🗑️ Marcador removido: ${denuncia.marcador_id}`);
+                console.log('Marcador removido:', denuncia.marcador_id);
               }
             }
           );
@@ -1249,7 +1173,6 @@ app.put('/denuncias/:id/:acao', verificarToken, (req, res) => {
                 }
 
                 const totalDenuncias = countResults[0].total_denuncias;
-                console.log(`📊 Total de denúncias aceitas para usuário ${denuncia.autor_marcador_id}: ${totalDenuncias}`);
 
                 if (totalDenuncias >= 3) {
                   // Banir usuário
@@ -1260,7 +1183,7 @@ app.put('/denuncias/:id/:acao', verificarToken, (req, res) => {
                       if (error) {
                         console.error('Erro ao banir usuário:', error);
                       } else {
-                        console.log(`🚫 Usuário banido: ${denuncia.autor_marcador_id} (3 denúncias aceitas)`);
+                        console.log('Usuário banido:', denuncia.autor_marcador_id, '(3 denúncias aceitas)');
                       }
                     }
                   );
@@ -1271,10 +1194,8 @@ app.put('/denuncias/:id/:acao', verificarToken, (req, res) => {
             console.log('ℹ️ Autor do marcador desconhecido - não é possível aplicar banimento');
           }
         }
-
-        console.log(`✅ Denúncia ${acao === 'aceitar' ? 'aceita' : 'rejeitada'}: ${id}`);
         res.json({ 
-          message: `Denúncia ${acao === 'aceitar' ? 'aceita' : 'rejeitada'} com sucesso` 
+          message: 'Denúncia ' + (acao === 'aceitar' ? 'aceita' : 'rejeitada') + ' com sucesso' 
         });
       }
     );
@@ -1285,10 +1206,18 @@ app.put('/denuncias/:id/:acao', verificarToken, (req, res) => {
 // INICIALIZAÇÃO DO SERVIDOR
 // =============================================================================
 
-app.listen(PORT, () => {
-  console.log('🚀 Servidor MapCity rodando na porta', PORT);
-  console.log('🔐 Sistema de autenticação ativo');
-  console.log('📍 Endpoints disponíveis:');
+// Testar conectividade com o banco antes de iniciar o servidor
+pool.query('SELECT 1 as test', (err, results) => {
+  if (err) {
+    console.error('❌ Erro ao conectar com o banco de dados:', err.message);
+    console.error('💡 Verifique se o MySQL está rodando e as credenciais estão corretas');
+    process.exit(1);
+  } else {
+    
+    app.listen(PORT, () => {
+      console.log('🚀 Servidor MapCity rodando na porta', PORT);
+      console.log('🔐 Sistema de autenticação ativo');
+      console.log('📍 Endpoints disponíveis:');
   console.log('   GET  /test - Teste de funcionamento');
   console.log('   POST /auth/login - Login');
   console.log('   POST /auth/registro - Registro');
@@ -1297,24 +1226,26 @@ app.listen(PORT, () => {
   console.log('   POST /lugares - Criar lugar');
   console.log('   PUT  /lugares/:id/resolver - Resolver lugar');
   console.log('   DELETE /lugares/:id - Deletar lugar');
-  console.log('   GET  /areas/publicas - Áreas aprovadas (Público)');
-  console.log('   GET  /areas - Listar áreas (ONG)');
-  console.log('   POST /areas - Criar área (ONG) - Enviada para aprovação');
-  console.log('   GET  /notificacoes - Listar notificações (ONG)');
-  console.log('   PUT  /notificacoes/:id/lida - Marcar notificação como lida (Admin/ONG)');
-  console.log('   POST /upload - Upload de imagens');
-  console.log('   GET  /admin/usuarios - Listar usuários (Admin)');
-  console.log('   GET  /admin/areas/pendentes - Áreas pendentes (Admin)');
-  console.log('   PUT  /admin/areas/:id/aprovar - Aprovar área (Admin)');
-  console.log('   PUT  /admin/areas/:id/rejeitar - Rejeitar área (Admin)');
-  console.log('   GET  /admin/areas - Todas as áreas (Admin)');
-  console.log('   DELETE /admin/areas/:id - Excluir área (Admin)');
-  console.log('   DELETE /areas/:id - Excluir própria área (ONG)');
-  console.log('   DELETE /auth/conta - Excluir própria conta');
-  console.log('   POST /denuncias - Criar denúncia de marcador');
-  console.log('   GET  /denuncias - Listar denúncias (Admin/ONG)');
-  console.log('   PUT  /denuncias/:id/aceitar - Aceitar denúncia (Admin/ONG)');
-  console.log('   PUT  /denuncias/:id/rejeitar - Rejeitar denúncia (Admin/ONG)');
+      console.log('   GET  /areas/publicas - Áreas aprovadas (Público)');
+      console.log('   GET  /areas - Listar áreas (ONG)');
+      console.log('   POST /areas - Criar área (ONG) - Enviada para aprovação');
+      console.log('   GET  /notificacoes - Listar notificações (ONG)');
+      console.log('   PUT  /notificacoes/:id/lida - Marcar notificação como lida (Admin/ONG)');
+      console.log('   POST /upload - Upload de imagens');
+      console.log('   GET  /admin/usuarios - Listar usuários (Admin)');
+      console.log('   GET  /admin/areas/pendentes - Áreas pendentes (Admin)');
+      console.log('   PUT  /admin/areas/:id/aprovar - Aprovar área (Admin)');
+      console.log('   PUT  /admin/areas/:id/rejeitar - Rejeitar área (Admin)');
+      console.log('   GET  /admin/areas - Todas as áreas (Admin)');
+      console.log('   DELETE /admin/areas/:id - Excluir área (Admin)');
+      console.log('   DELETE /areas/:id - Excluir própria área (ONG)');
+      console.log('   DELETE /auth/conta - Excluir própria conta');
+      console.log('   POST /denuncias - Criar denúncia de marcador');
+      console.log('   GET  /denuncias - Listar denúncias (Admin/ONG)');
+      console.log('   PUT  /denuncias/:id/aceitar - Aceitar denúncia (Admin/ONG)');
+      console.log('   PUT  /denuncias/:id/rejeitar - Rejeitar denúncia (Admin/ONG)');
+    });
+  }
 });
 
 module.exports = app;

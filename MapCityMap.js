@@ -670,6 +670,13 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
 // Componente principal
 export default function MapCityMap() {
   const { usuario, token, estaLogado, logout } = useAuth();
+  
+  
+  React.useEffect(() => {
+    if (estaLogado && usuario) {
+      // Usuário logado
+    }
+  }, [estaLogado, usuario]);
   const [markers, setMarkers] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isViewModalVisible, setIsViewModalVisible] = useState(false);
@@ -895,7 +902,14 @@ export default function MapCityMap() {
   React.useEffect(() => {
     const carregarLugares = async () => {
       try {
-        console.log('🔄 Carregando lugares para usuário:', usuario.email);
+        // Primeiro, testar conectividade com o servidor
+        const { testarConectividade } = await import('./api');
+        const conectado = await testarConectividade();
+        
+        if (!conectado) {
+          throw new Error('Servidor não está respondendo');
+        }
+        
         const data = await lugaresAPI.buscarTodos();
         console.log('📍 Dados recebidos do backend:', data);
         
@@ -984,14 +998,37 @@ export default function MapCityMap() {
           };
         }).filter(lugar => lugar !== null); // Remove objetos com coordenadas inválidas
         
-        console.log('✅ Marcadores adaptados:', adaptados);
         
         // Para marcadores sem informação de ONG, tentar calcular dinamicamente
         // Isso será feito após as áreas serem carregadas, no useEffect
         setMarkers(adaptados);
       } catch (error) {
         console.error('❌ Erro ao buscar lugares:', error);
-        Alert.alert('Erro', 'Não foi possível carregar os marcadores');
+        
+        // Verificar se é erro de autenticação
+        if (error.message.includes('Token') || error.message.includes('401') || error.message.includes('Sessão expirada')) {
+          Alert.alert(
+            'Sessão Expirada', 
+            'Sua sessão expirou. Por favor, faça login novamente.',
+            [{ text: 'OK', onPress: () => logout() }]
+          );
+        } else {
+          // Verificar conectividade com servidor
+          const { testarConectividade } = await import('./api');
+          const conectado = await testarConectividade();
+          
+          if (!conectado) {
+            Alert.alert(
+              'Erro de Conexão',
+              'Não foi possível conectar ao servidor. Verifique sua conexão de internet.'
+            );
+          } else {
+            Alert.alert(
+              'Erro',
+              `Não foi possível carregar os marcadores: ${error.message}`
+            );
+          }
+        }
       }
     };
 
@@ -1014,30 +1051,34 @@ export default function MapCityMap() {
     
     try {
       if (usuario.tipo === 'ong') {
-        console.log('🗺️ Carregando áreas para ONG:', usuario.id);
         const data = await areasAPI.buscarAreas();
-        console.log('✅ Áreas carregadas:', data.length);
         setAreas(data);
       } else if (usuario.tipo === 'admin') {
-        console.log('🗺️ Admin carregando todas as áreas aprovadas');
         const { adminAreasAPI } = await import('./AdminAreasAPI');
         const data = await adminAreasAPI.buscarTodasAreas();
-        console.log('🗺️ Admin - Total de áreas encontradas:', data.length);
-        console.log('🗺️ Admin - Áreas encontradas:', data);
         // Filtrar apenas áreas aprovadas para mostrar no mapa
         const areasAprovadas = data.filter(area => area.status === 'aprovada');
-        console.log('✅ Áreas aprovadas carregadas para admin:', areasAprovadas.length);
-        console.log('✅ Áreas aprovadas:', areasAprovadas);
         setAreas(areasAprovadas);
       } else if (usuario.tipo === 'usuario') {
         // Usuários comuns usam endpoint público para áreas aprovadas
-        console.log('🗺️ Usuário carregando áreas aprovadas públicas');
         const data = await areasAPI.buscarAreasAprovadas();
-        console.log('✅ Áreas aprovadas carregadas para usuário:', data.length);
         setAreas(data);
       }
     } catch (error) {
       console.error('❌ Erro ao carregar áreas:', error);
+      
+      // Verificar se é erro de autenticação
+      if (error.message.includes('Token') || error.message.includes('401') || error.message.includes('Sessão expirada')) {
+        console.warn('🔐 Problema de autenticação detectado ao carregar áreas');
+        Alert.alert(
+          'Sessão Expirada', 
+          'Sua sessão expirou. Por favor, faça login novamente.',
+          [{ text: 'OK', onPress: () => logout() }]
+        );
+      } else {
+        console.warn('⚠️ Falha ao carregar áreas, continuando sem elas');
+        // Não mostrar alert para áreas pois não é crítico para o funcionamento básico
+      }
     }
   }, [usuario]);
 
@@ -1048,7 +1089,6 @@ export default function MapCityMap() {
     try {
       console.log('🔔 Carregando notificações para ONG:', usuario.id);
       const data = await areasAPI.buscarNotificacoes();
-      console.log('✅ Notificações carregadas:', data.length);
       setNotificacoes(data);
     } catch (error) {
       console.error('❌ Erro ao carregar notificações:', error);
@@ -1104,8 +1144,6 @@ export default function MapCityMap() {
 
   // Função para ONG excluir sua própria área
   const excluirAreaOng = useCallback(async (areaId, areaNome) => {
-    console.log('🔄 ONG tentando excluir área:', areaId, areaNome);
-    console.log('👤 Usuário atual:', usuario);
     console.log('🎭 Tipo de usuário:', usuario?.tipo);
     
     // Encontrar a área para mostrar no modal
@@ -1123,8 +1161,6 @@ export default function MapCityMap() {
     try {
       console.log('📤 ONG chamando API para excluir área:', areaParaExcluir.id);
       const result = await areasAPI.excluirArea(areaParaExcluir.id);
-      console.log('✅ Resposta da API:', result);
-      console.log('✅ Área da ONG excluída com sucesso');
       Alert.alert('Sucesso', 'Área excluída com sucesso!');
       setAreaParaExcluir(null);
       await carregarAreas();
@@ -1296,7 +1332,6 @@ export default function MapCityMap() {
   // Atualizar marcadores com informações da ONG quando as áreas são carregadas
   React.useEffect(() => {
     if (areas.length > 0 && !markersUpdatedRef.current) {
-      console.log('🔄 Atualizando marcadores com informações da ONG...');
       markersUpdatedRef.current = true;
       
       setMarkers(prevMarkers => {
@@ -1391,7 +1426,6 @@ export default function MapCityMap() {
           const file = new File([blob], `image_${image.id}.jpg`, { type: mimeType });
           
           files.push(file);
-          console.log('✅ File criado:', file.name, file.size, 'bytes');
           
         } catch (error) {
           console.error('❌ Erro ao processar imagem', image.id, ':', error);
@@ -1406,8 +1440,6 @@ export default function MapCityMap() {
       // Usar a API autenticada para upload
       console.log('🌐 Enviando', files.length, 'arquivos...');
       const result = await uploadAPI.enviarImagens(files);
-      
-      console.log('✅ Upload concluído:', result);
       return result.images || [];
       
     } catch (error) {
@@ -1438,12 +1470,10 @@ export default function MapCityMap() {
     try {
       // Primeiro, fazer upload das imagens se houver
       let imagePaths = [];
-      console.log('🔍 Verificando imagens selecionadas:', selectedImages.length);
       
       if (selectedImages.length > 0) {
         console.log('📤 Fazendo upload de', selectedImages.length, 'imagem(s)...');
         imagePaths = await uploadImages(selectedImages);
-        console.log('✅ Upload concluído. Caminhos recebidos:', imagePaths);
       }
 
       // Verificar se o marcador está dentro de uma área de ONG
@@ -1461,12 +1491,8 @@ export default function MapCityMap() {
         area_ong_id: ongResponsavel?.id || null,
         area_ong_nome: ongResponsavel?.ongNome || null
       };
-      
-      console.log('📝 Dados do lugar:', dadosLugar);
       console.log('🏢 ONG responsável:', ongResponsavel);
       const novoLugar = await lugaresAPI.criar(dadosLugar);
-      
-      console.log('✅ Lugar criado:', novoLugar);
       
       // Adicionar à lista local
       setMarkers(prev => [
@@ -1584,19 +1610,11 @@ export default function MapCityMap() {
     console.log('📍 Dados do marcador:', marker);
     console.log('🖼️ Imagens do marcador:', marker.images);
     console.log('🔧 Tipo das imagens:', typeof marker.images);
-    console.log('📊 Quantidade de imagens:', marker.images?.length);
     
     try {
-      console.log('🔄 Definindo selectedMarker...');
       setSelectedMarker(marker);
-      
-      console.log('🔄 Resetando índice da imagem...');
       setCurrentImageIndex(0);
-      
-      console.log('🔄 Abrindo modal de visualização...');
       setIsViewModalVisible(true);
-      
-      console.log('✅ Modal deveria estar visível agora');
     } catch (error) {
       console.error('❌ Erro em handleMarkerClick:', error);
     }
@@ -1621,7 +1639,6 @@ export default function MapCityMap() {
             ? { ...marker, resolved: true, resolvedAt: new Date().toISOString() }
             : marker
         );
-        console.log('✅ Marcadores atualizados');
         return updated;
       });
       
@@ -1694,48 +1711,87 @@ export default function MapCityMap() {
     }
   }, [usuario, markers]);
 
-  // Função para denunciar problema (usuários comuns)
-  const handleReportProblem = useCallback(async (marker) => {
+  // Estados para denúncia
+  const [isDenunciaModalVisible, setIsDenunciaModalVisible] = useState(false);
+  const [motivoDenuncia, setMotivoDenuncia] = useState('');
+  const [descricaoDenuncia, setDescricaoDenuncia] = useState('');
+  const [marcadorParaDenunciar, setMarcadorParaDenunciar] = useState(null);
+
+  // Opções de motivos para denúncia
+  const MOTIVOS_DENUNCIA = [
+    { value: 'conteudo_inadequado', label: 'Conteúdo inadequado' },
+    { value: 'informacao_incorreta', label: 'Informação incorreta' },
+    { value: 'spam', label: 'Spam ou duplicação' },
+    { value: 'local_incorreto', label: 'Localização incorreta' },
+    { value: 'ja_resolvido', label: 'Problema já foi resolvido' },
+    { value: 'outro', label: 'Outro motivo' }
+  ];
+
+  // Função para iniciar denúncia
+  const iniciarDenuncia = useCallback((marker) => {
     if (!marker || !usuario) return;
     
+    setMarcadorParaDenunciar(marker);
+    setMotivoDenuncia('');
+    setDescricaoDenuncia('');
+    setIsDenunciaModalVisible(true);
+  }, [usuario]);
+
+  // Função para enviar denúncia
+  const enviarDenuncia = useCallback(async () => {
+    if (!marcadorParaDenunciar || !motivoDenuncia) {
+      Alert.alert('Erro', 'Por favor, selecione um motivo para a denúncia');
+      return;
+    }
+
     try {
-      // Criar relatório de denúncia
-      const reportData = {
-        markerId: marker.id,
-        reportedBy: usuario.email,
-        reportType: 'user_report',
-        description: marker.description,
-        location: {
-          lat: marker.lat,
-          lng: marker.lng
-        },
-        reportedAt: new Date().toISOString()
-      };
-      
-      console.log('🚨 Enviando denúncia:', reportData);
-      
-      // Simular envio para API (você pode implementar a API específica)
-      // await lugaresAPI.denunciar(reportData);
-      
+
+      await lugaresAPI.denunciar(
+        marcadorParaDenunciar.id,
+        motivoDenuncia,
+        descricaoDenuncia || 'Denúncia enviada pelo usuário'
+      );
+
+      // Fechar modais
+      setIsDenunciaModalVisible(false);
+      setIsViewModalVisible(false);
+      setSelectedMarker(null);
+      setMarcadorParaDenunciar(null);
+
+      // Mostrar confirmação melhorada com mais informações
       Alert.alert(
-        'Denúncia Enviada', 
-        `Obrigado por reportar este problema. Nossa equipe irá analisar em breve.\n\nTipo: ${PROBLEM_TYPES.find(t => t.value === marker.type)?.label || 'Problema'}\nLocalização: ${marker.lat.toFixed(6)}, ${marker.lng.toFixed(6)}`,
+        '✅ Denúncia Enviada com Sucesso!', 
+        `Obrigado por contribuir com a comunidade!\n\n` +
+        `📍 Marcador: ${marcadorParaDenunciar.nome}\n` +
+        `🚨 Motivo: ${MOTIVOS_DENUNCIA.find(m => m.value === motivoDenuncia)?.label}\n` +
+        `📝 ID da Denúncia: #${new Date().getTime().toString().slice(-6)}\n\n` +
+        `📋 PRÓXIMOS PASSOS:\n` +
+        `• Sua denúncia foi enviada para análise\n` +
+        `• A equipe responsável será notificada\n` +
+        `• Você pode acompanhar o status no painel\n` +
+        `• Medidas serão tomadas se procedente\n\n` +
+        `⏱️ Tempo estimado de análise: 24-48 horas`,
         [
-          {
-            text: 'OK',
-            onPress: () => {
-              setIsViewModalVisible(false);
-              setSelectedMarker(null);
-            }
+          { 
+            text: 'Entendi', 
+            style: 'default'
           }
         ]
       );
-      
+
     } catch (error) {
       console.error('❌ Erro ao enviar denúncia:', error);
-      Alert.alert('Erro', 'Não foi possível enviar a denúncia. Tente novamente.');
+      Alert.alert(
+        'Erro', 
+        `Não foi possível enviar a denúncia: ${error.message}\n\nTente novamente mais tarde.`
+      );
     }
-  }, [usuario]);
+  }, [marcadorParaDenunciar, motivoDenuncia, descricaoDenuncia]);
+
+  // Função para denunciar problema (usuários comuns) - REMOVIDA E SUBSTITUÍDA
+  const handleReportProblem = useCallback(async (marker) => {
+    iniciarDenuncia(marker);
+  }, [iniciarDenuncia]);
 
   // Confirmar exclusão de marcador
   const confirmarExclusaoMarcador = async () => {
@@ -2126,7 +2182,6 @@ export default function MapCityMap() {
                   shadowRadius: 3.84,
                 }}
                 onPress={() => {
-                  console.log('📊 Botão Painel ONG clicado!');
                   setIsAdminDashboardVisible(true);
                 }}
                 activeOpacity={0.7}
@@ -2647,13 +2702,12 @@ export default function MapCityMap() {
       </Modal>
 
       {/* Modal Moderno de Visualização do Problema */}
-      {console.log('🔍 Renderizando modal - isViewModalVisible:', isViewModalVisible, 'selectedMarker:', !!selectedMarker)}
+      {}
       <Modal
         visible={isViewModalVisible}
         animationType="slide"
         presentationStyle="pageSheet"
         onRequestClose={() => {
-          console.log('🔍 Modal sendo fechado via onRequestClose');
           setIsViewModalVisible(false);
         }}
       >
@@ -2727,10 +2781,10 @@ export default function MapCityMap() {
             flex: 1,
             padding: modernTheme.spacing.lg
           }} showsVerticalScrollIndicator={false}>
-            {console.log('📋 Conteúdo do modal - selectedMarker existe:', !!selectedMarker)}
+            {}
             {selectedMarker ? (
               <>
-                {console.log('📋 Renderizando conteúdo do marcador:', selectedMarker.id)}
+                {}
                 {/* Status Badge */}
                 <View style={{
                   backgroundColor: selectedMarker.resolved ? modernTheme.colors.success : modernTheme.colors.warning,
@@ -3499,7 +3553,6 @@ export default function MapCityMap() {
         onClose={() => setIsAdminAreasPanelVisible(false)}
         onAreaUpdate={() => {
           // Recarregar áreas quando houver aprovação/rejeição/exclusão
-          console.log('🔄 Atualizando áreas após ação do admin');
           carregarAreas();
         }}
       />
@@ -3556,7 +3609,6 @@ export default function MapCityMap() {
                   marginRight: 10
                 }}
                 onPress={() => {
-                  console.log('🔄 Exclusão cancelada pelo usuário');
                   setAreaParaExcluir(null);
                 }}
               >
@@ -3630,7 +3682,6 @@ export default function MapCityMap() {
                   marginRight: 10
                 }}
                 onPress={() => {
-                  console.log('🔄 Exclusão de marcador cancelada pelo admin');
                   setMarcadorParaExcluir(null);
                 }}
               >
@@ -3654,6 +3705,243 @@ export default function MapCityMap() {
                 </Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de Denúncia */}
+      <Modal
+        visible={isDenunciaModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setIsDenunciaModalVisible(false)}
+      >
+        <View style={{
+          flex: 1,
+          backgroundColor: '#FFFFFF',
+        }}>
+          {/* Header do Modal */}
+          <View style={{
+            backgroundColor: '#F8FAFC',
+            paddingTop: Platform.OS === 'web' ? 20 : 50,
+            paddingHorizontal: 20,
+            paddingBottom: 20,
+            borderBottomWidth: 1,
+            borderBottomColor: '#E2E8F0',
+          }}>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}>
+              <Text style={{
+                fontSize: 20,
+                fontWeight: '700',
+                color: '#1E293B',
+              }}>
+                🚨 Denunciar Marcador
+              </Text>
+              <TouchableOpacity
+                onPress={() => setIsDenunciaModalVisible(false)}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: '#E2E8F0',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={{ fontSize: 18, color: '#64748B' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <ScrollView style={{ flex: 1, padding: 20 }}>
+            {/* Informações do marcador */}
+            {marcadorParaDenunciar && (
+              <View style={{
+                backgroundColor: '#F1F5F9',
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 24,
+                borderWidth: 1,
+                borderColor: '#E2E8F0',
+              }}>
+                <Text style={{
+                  fontSize: 16,
+                  fontWeight: '600',
+                  color: '#334155',
+                  marginBottom: 8,
+                }}>
+                  📍 Marcador a ser denunciado:
+                </Text>
+                <Text style={{
+                  fontSize: 14,
+                  color: '#64748B',
+                  marginBottom: 4,
+                }}>
+                  <Text style={{ fontWeight: '600' }}>Nome:</Text> {marcadorParaDenunciar.nome}
+                </Text>
+                <Text style={{
+                  fontSize: 14,
+                  color: '#64748B',
+                  marginBottom: 4,
+                }}>
+                  <Text style={{ fontWeight: '600' }}>Tipo:</Text> {PROBLEM_TYPES.find(t => t.value === marcadorParaDenunciar.type)?.label || marcadorParaDenunciar.type}
+                </Text>
+                <Text style={{
+                  fontSize: 14,
+                  color: '#64748B',
+                }}>
+                  <Text style={{ fontWeight: '600' }}>Descrição:</Text> {marcadorParaDenunciar.description || 'Sem descrição'}
+                </Text>
+              </View>
+            )}
+
+            {/* Motivo da denúncia */}
+            <Text style={{
+              fontSize: 16,
+              fontWeight: '600',
+              color: '#334155',
+              marginBottom: 12,
+            }}>
+              Motivo da denúncia *
+            </Text>
+            
+            {MOTIVOS_DENUNCIA.map((motivo) => (
+              <TouchableOpacity
+                key={motivo.value}
+                onPress={() => setMotivoDenuncia(motivo.value)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
+                  borderRadius: 8,
+                  marginBottom: 8,
+                  backgroundColor: motivoDenuncia === motivo.value ? '#EEF2FF' : '#F8FAFC',
+                  borderWidth: 1,
+                  borderColor: motivoDenuncia === motivo.value ? '#3B82F6' : '#E2E8F0',
+                }}
+              >
+                <View style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 10,
+                  backgroundColor: motivoDenuncia === motivo.value ? '#3B82F6' : 'transparent',
+                  borderWidth: 2,
+                  borderColor: motivoDenuncia === motivo.value ? '#3B82F6' : '#CBD5E1',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 12,
+                }}>
+                  {motivoDenuncia === motivo.value && (
+                    <Text style={{ color: '#FFFFFF', fontSize: 12 }}>✓</Text>
+                  )}
+                </View>
+                <Text style={{
+                  fontSize: 14,
+                  color: '#334155',
+                  fontWeight: motivoDenuncia === motivo.value ? '600' : '400',
+                }}>
+                  {motivo.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+
+            {/* Descrição adicional */}
+            <Text style={{
+              fontSize: 16,
+              fontWeight: '600',
+              color: '#334155',
+              marginTop: 24,
+              marginBottom: 12,
+            }}>
+              Descrição adicional (opcional)
+            </Text>
+            <TextInput
+              style={{
+                borderWidth: 1,
+                borderColor: '#E2E8F0',
+                borderRadius: 8,
+                padding: 12,
+                fontSize: 14,
+                backgroundColor: '#FFFFFF',
+                minHeight: 80,
+                textAlignVertical: 'top',
+              }}
+              placeholder="Forneça mais detalhes sobre o problema..."
+              placeholderTextColor="#94A3B8"
+              multiline
+              numberOfLines={4}
+              value={descricaoDenuncia}
+              onChangeText={setDescricaoDenuncia}
+            />
+
+            {/* Disclaimer */}
+            <View style={{
+              backgroundColor: '#FEF3C7',
+              borderRadius: 8,
+              padding: 12,
+              marginTop: 20,
+              borderWidth: 1,
+              borderColor: '#F59E0B',
+            }}>
+              <Text style={{
+                fontSize: 13,
+                color: '#92400E',
+                lineHeight: 18,
+              }}>
+                ⚠️ <Text style={{ fontWeight: '600' }}>Importante:</Text> Denúncias falsas ou mal-intencionadas podem resultar em restrições à sua conta. Certifique-se de que sua denúncia é justificada.
+              </Text>
+            </View>
+          </ScrollView>
+
+          {/* Botões de ação */}
+          <View style={{
+            padding: 20,
+            borderTopWidth: 1,
+            borderTopColor: '#E2E8F0',
+            backgroundColor: '#F8FAFC',
+          }}>
+            <TouchableOpacity
+              onPress={enviarDenuncia}
+              disabled={!motivoDenuncia}
+              style={{
+                backgroundColor: motivoDenuncia ? '#DC2626' : '#CBD5E1',
+                borderRadius: 8,
+                paddingVertical: 16,
+                alignItems: 'center',
+                marginBottom: 12,
+              }}
+            >
+              <Text style={{
+                color: '#FFFFFF',
+                fontSize: 16,
+                fontWeight: '600',
+              }}>
+                🚨 Enviar Denúncia
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              onPress={() => setIsDenunciaModalVisible(false)}
+              style={{
+                backgroundColor: 'transparent',
+                borderRadius: 8,
+                paddingVertical: 16,
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{
+                color: '#64748B',
+                fontSize: 16,
+                fontWeight: '500',
+              }}>
+                Cancelar
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>

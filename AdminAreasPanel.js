@@ -22,7 +22,6 @@ const AdminAreasPanel = ({ visible, onClose, onAreaUpdate }) => {
   const carregarDados = async () => {
     setLoading(true);
     try {
-      console.log('🔄 AdminAreasPanel: Carregando dados...');
       
       // Carregar pendentes primeiro (menos provável de falhar)
       let pendentes = [];
@@ -30,7 +29,6 @@ const AdminAreasPanel = ({ visible, onClose, onAreaUpdate }) => {
       
       try {
         pendentes = await adminAreasAPI.buscarAreasPendentes();
-        console.log('✅ Áreas pendentes carregadas:', pendentes.length);
       } catch (error) {
         console.error('❌ Erro ao carregar áreas pendentes:', error);
         pendentes = [];
@@ -39,7 +37,6 @@ const AdminAreasPanel = ({ visible, onClose, onAreaUpdate }) => {
       // Carregar todas as áreas (pode falhar)
       try {
         todas = await adminAreasAPI.buscarTodasAreas();
-        console.log('✅ Todas as áreas carregadas:', todas.length);
       } catch (error) {
         console.error('❌ Erro ao carregar todas as áreas:', error);
         // Usar apenas as áreas pendentes como fallback
@@ -73,13 +70,10 @@ const AdminAreasPanel = ({ visible, onClose, onAreaUpdate }) => {
 
   const confirmarAprovacao = async () => {
     if (!areaParaAprovar) return;
-    
-    console.log('🔄 AdminPanel: Usuário confirmou aprovação, iniciando processo...');
     try {
       setLoading(true);
       console.log('📤 AdminPanel: Chamando API para aprovar área:', areaParaAprovar.id);
       const result = await adminAreasAPI.aprovarArea(areaParaAprovar.id);
-      console.log('✅ AdminPanel: Resultado da API:', result);
       Alert.alert('Sucesso', 'Área aprovada com sucesso!');
       setAreaParaAprovar(null);
       await carregarDados();
@@ -89,7 +83,6 @@ const AdminAreasPanel = ({ visible, onClose, onAreaUpdate }) => {
       Alert.alert('Erro', error.message);
     } finally {
       setLoading(false);
-      console.log('🔄 AdminPanel: Loading definido como false');
     }
   };
 
@@ -121,7 +114,6 @@ const AdminAreasPanel = ({ visible, onClose, onAreaUpdate }) => {
   };
 
   const excluirArea = (areaId, areaNome) => {
-    console.log('🔄 Tentando excluir área:', areaId, areaNome);
     Alert.alert(
       'Confirmar Exclusão',
       `Tem certeza que deseja excluir permanentemente a área "${areaNome}"? Esta ação não pode ser desfeita.`,
@@ -135,7 +127,6 @@ const AdminAreasPanel = ({ visible, onClose, onAreaUpdate }) => {
               setLoading(true);
               console.log('📤 Chamando API para excluir área:', areaId);
               await adminAreasAPI.excluirArea(areaId);
-              console.log('✅ Área excluída com sucesso');
               Alert.alert('Sucesso', 'Área excluída com sucesso!');
               carregarDados();
               onAreaUpdate?.();
@@ -426,7 +417,6 @@ const AdminAreasPanel = ({ visible, onClose, onAreaUpdate }) => {
                   marginRight: 10
                 }}
                 onPress={() => {
-                  console.log('🔄 AdminPanel: Aprovação cancelada pelo usuário');
                   setAreaParaAprovar(null);
                 }}
                 disabled={loading}

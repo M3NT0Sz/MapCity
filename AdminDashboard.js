@@ -66,7 +66,9 @@ const AdminDashboard = ({ visible, onClose }) => {
     try {
       const token = localStorage.getItem('mapcity_token');
       const response = await denunciasAPI.listarDenuncias(token);
-      setDenuncias(response.denuncias || []);
+      
+      // Backend retorna um array diretamente, não um objeto com propriedade denuncias
+      setDenuncias(Array.isArray(response) ? response : (response.denuncias || []));
     } catch (error) {
       console.error('Erro ao carregar denúncias:', error);
     }
@@ -282,57 +284,252 @@ const AdminDashboard = ({ visible, onClose }) => {
     }
   };
 
-  const renderDenuncias = () => (
-    <ScrollView 
-      style={styles.tabContent}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-    >
-      <Text style={styles.sectionTitle}>
-        Denúncias Pendentes ({denuncias.filter(d => d.status === 'pendente').length})
-      </Text>
-      
-      {denuncias.filter(d => d.status === 'pendente').map(denuncia => (
-        <View key={denuncia.id} style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Marcador: {denuncia.marcador_nome}</Text>
-            <View style={[styles.badge, styles.badgePending]}>
-              <Text style={styles.badgeText}>Pendente</Text>
+  const renderDenuncias = () => {
+    const denunciasPendentes = denuncias.filter(d => d.status === 'pendente');
+    
+    return (
+      <ScrollView 
+        style={styles.tabContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        {/* Header com contador */}
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 16,
+          padding: 16,
+          backgroundColor: denunciasPendentes.length > 0 ? '#FEF3C7' : '#F0F9FF',
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: denunciasPendentes.length > 0 ? '#F59E0B' : '#0EA5E9',
+        }}>
+          <View>
+            <Text style={[styles.sectionTitle, { marginBottom: 4 }]}>
+              🚨 Denúncias Pendentes
+            </Text>
+            <Text style={{
+              fontSize: 14,
+              color: '#6B7280',
+            }}>
+              {denunciasPendentes.length === 0 
+                ? 'Nenhuma denúncia pendente' 
+                : `${denunciasPendentes.length} denúncia${denunciasPendentes.length > 1 ? 's' : ''} aguardando análise`
+              }
+            </Text>
+          </View>
+          
+          {denunciasPendentes.length > 0 && (
+            <View style={{
+              backgroundColor: '#DC2626',
+              borderRadius: 20,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              minWidth: 32,
+              alignItems: 'center',
+            }}>
+              <Text style={{
+                color: '#FFFFFF',
+                fontSize: 14,
+                fontWeight: '700',
+              }}>
+                {denunciasPendentes.length}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Lista de denúncias */}
+        {denunciasPendentes.map(denuncia => (
+          <View key={denuncia.id} style={{
+            ...styles.card,
+            borderLeftWidth: 4,
+            borderLeftColor: '#DC2626',
+            backgroundColor: '#FFFBEB',
+          }}>
+            <View style={styles.cardHeader}>
+              <Text style={{
+                ...styles.cardTitle,
+                color: '#DC2626',
+              }}>
+                📍 {denuncia.marcador_titulo || denuncia.marcador_nome}
+              </Text>
+              <View style={[styles.badge, { backgroundColor: '#FEE2E2', borderColor: '#EF4444' }]}>
+                <Text style={{ ...styles.badgeText, color: '#DC2626' }}>
+                  🚨 Pendente
+                </Text>
+              </View>
+            </View>
+            
+            {/* Informações da denúncia com ícones */}
+            <View style={{ marginVertical: 8 }}>
+              <Text style={{
+                ...styles.cardText,
+                fontWeight: '600',
+                color: '#7C2D12',
+                marginBottom: 6,
+              }}>
+                ⚠️ Motivo: {denuncia.motivo === 'conteudo_inadequado' ? 'Conteúdo inadequado' :
+                           denuncia.motivo === 'informacao_incorreta' ? 'Informação incorreta' :
+                           denuncia.motivo === 'spam' ? 'Spam ou duplicação' :
+                           denuncia.motivo === 'local_incorreto' ? 'Localização incorreta' :
+                           denuncia.motivo === 'ja_resolvido' ? 'Problema já foi resolvido' :
+                           denuncia.motivo || 'Não especificado'}
+              </Text>
+              
+              <Text style={styles.cardText}>
+                👤 Denunciante: {denuncia.denunciante_nome} ({denuncia.denunciante_email})
+              </Text>
+              
+              <Text style={styles.cardText}>
+                📅 Data: {new Date(denuncia.criada_em).toLocaleDateString('pt-BR', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </Text>
+              
+              {denuncia.latitude && denuncia.longitude && (
+                <Text style={styles.cardText}>
+                  🌍 Localização: {parseFloat(denuncia.latitude).toFixed(6)}, {parseFloat(denuncia.longitude).toFixed(6)}
+                </Text>
+              )}
+            </View>
+            
+            {/* Descrição da denúncia */}
+            {denuncia.descricao && (
+              <View style={{
+                backgroundColor: '#FEF3C7',
+                borderRadius: 8,
+                padding: 12,
+                marginVertical: 8,
+                borderWidth: 1,
+                borderColor: '#F59E0B',
+              }}>
+                <Text style={{
+                  fontSize: 13,
+                  fontWeight: '600',
+                  color: '#92400E',
+                  marginBottom: 4,
+                }}>
+                  💬 Descrição adicional:
+                </Text>
+                <Text style={{
+                  fontSize: 13,
+                  color: '#92400E',
+                  lineHeight: 18,
+                }}>
+                  {denuncia.descricao}
+                </Text>
+              </View>
+            )}
+
+            {/* Informações do marcador denunciado */}
+            {denuncia.marcador_descricao && (
+              <View style={{
+                backgroundColor: '#F1F5F9',
+                borderRadius: 8,
+                padding: 12,
+                marginVertical: 8,
+                borderWidth: 1,
+                borderColor: '#E2E8F0',
+              }}>
+                <Text style={{
+                  fontSize: 13,
+                  fontWeight: '600',
+                  color: '#334155',
+                  marginBottom: 4,
+                }}>
+                  📝 Descrição do marcador:
+                </Text>
+                <Text style={{
+                  fontSize: 13,
+                  color: '#64748B',
+                  lineHeight: 18,
+                }}>
+                  {denuncia.marcador_descricao}
+                </Text>
+              </View>
+            )}
+            
+            {/* Botões de ação melhorados */}
+            <View style={{
+              ...styles.cardActions,
+              marginTop: 16,
+              paddingTop: 16,
+              borderTopWidth: 1,
+              borderTopColor: '#F3F4F6',
+            }}>
+              <TouchableOpacity 
+                style={{
+                  ...styles.button,
+                  backgroundColor: '#059669',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 16,
+                }}
+                onPress={() => processarDenuncia(denuncia.id, 'aceitar')}
+              >
+                <Text style={{ ...styles.buttonText, marginRight: 6 }}>✅</Text>
+                <Text style={styles.buttonText}>Aceitar</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={{
+                  ...styles.button,
+                  backgroundColor: '#DC2626',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 16,
+                }}
+                onPress={() => setDenunciaSelected(denuncia)}
+              >
+                <Text style={{ ...styles.buttonText, marginRight: 6 }}>❌</Text>
+                <Text style={styles.buttonText}>Rejeitar</Text>
+              </TouchableOpacity>
             </View>
           </View>
-          
-          <Text style={styles.cardText}>Motivo: {denuncia.motivo}</Text>
-          <Text style={styles.cardText}>Denunciante: {denuncia.denunciante_nome}</Text>
-          <Text style={styles.cardText}>Data: {new Date(denuncia.criada_em).toLocaleDateString()}</Text>
-          
-          {denuncia.descricao && (
-            <Text style={styles.cardText}>Descrição: {denuncia.descricao}</Text>
-          )}
-          
-          <View style={styles.cardActions}>
-            <TouchableOpacity 
-              style={[styles.button, styles.buttonSuccess]}
-              onPress={() => processarDenuncia(denuncia.id, 'aceitar')}
-            >
-              <Text style={styles.buttonText}>Aceitar</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.button, styles.buttonDanger]}
-              onPress={() => setDenunciaSelected(denuncia)}
-            >
-              <Text style={styles.buttonText}>Rejeitar</Text>
-            </TouchableOpacity>
+        ))}
+        
+        {/* Estado vazio melhorado */}
+        {denunciasPendentes.length === 0 && (
+          <View style={{
+            ...styles.emptyState,
+            backgroundColor: '#F0FDF4',
+            borderWidth: 1,
+            borderColor: '#BBF7D0',
+            borderRadius: 12,
+            padding: 24,
+            marginTop: 20,
+          }}>
+            <Text style={{
+              fontSize: 48,
+              marginBottom: 12,
+            }}>
+              ✅
+            </Text>
+            <Text style={{
+              ...styles.emptyText,
+              color: '#059669',
+              fontWeight: '600',
+              marginBottom: 8,
+            }}>
+              Tudo em ordem!
+            </Text>
+            <Text style={{
+              ...styles.emptyText,
+              color: '#065F46',
+              fontSize: 14,
+            }}>
+              Não há denúncias pendentes no momento.
+            </Text>
           </View>
-        </View>
-      ))}
-      
-      {denuncias.filter(d => d.status === 'pendente').length === 0 && (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>Nenhuma denúncia pendente</Text>
-        </View>
-      )}
-    </ScrollView>
-  );
+        )}
+      </ScrollView>
+    );
+  };
 
   const renderAreas = () => (
     <ScrollView 
@@ -500,16 +697,44 @@ const AdminDashboard = ({ visible, onClose }) => {
     </ScrollView>
   );
 
-  const renderTabButtons = () => (
-    <View style={styles.tabContainer}>
-      <TouchableOpacity
-        style={[styles.tab, activeTab === 'denuncias' && styles.activeTab]}
-        onPress={() => setActiveTab('denuncias')}
-      >
-        <Text style={[styles.tabText, activeTab === 'denuncias' && styles.activeTabText]}>
-          Denúncias
-        </Text>
-      </TouchableOpacity>
+  const renderTabButtons = () => {
+    const denunciasPendentes = denuncias.filter(d => d.status === 'pendente').length;
+    
+    return (
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'denuncias' && styles.activeTab]}
+          onPress={() => setActiveTab('denuncias')}
+        >
+          <View style={{ 
+            flexDirection: 'row', 
+            alignItems: 'center',
+            position: 'relative',
+          }}>
+            <Text style={[styles.tabText, activeTab === 'denuncias' && styles.activeTabText]}>
+              Denúncias
+            </Text>
+            {denunciasPendentes > 0 && (
+              <View style={{
+                backgroundColor: '#DC2626',
+                borderRadius: 10,
+                paddingHorizontal: 6,
+                paddingVertical: 2,
+                marginLeft: 8,
+                minWidth: 20,
+                alignItems: 'center',
+              }}>
+                <Text style={{
+                  color: '#FFFFFF',
+                  fontSize: 11,
+                  fontWeight: '700',
+                }}>
+                  {denunciasPendentes > 99 ? '99+' : denunciasPendentes}
+                </Text>
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
       
       <TouchableOpacity
         style={[styles.tab, activeTab === 'areas' && styles.activeTab]}
@@ -527,15 +752,14 @@ const AdminDashboard = ({ visible, onClose }) => {
         <Text style={[styles.tabText, activeTab === 'marcadores' && styles.activeTabText]}>
           Marcadores
         </Text>
-      </TouchableOpacity>
+        </TouchableOpacity>
     </View>
-  );
+    );
+  };
 
   if (!usuario || (usuario.tipo !== 'admin' && usuario.tipo !== 'ong')) {
     return null;
-  }
-
-  return (
+  }  return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={styles.container}>
         <View style={styles.header}>

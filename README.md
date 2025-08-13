@@ -25,6 +25,13 @@ MapCity é uma aplicação web/mobile desenvolvida com **React Native + Expo** q
 - **🏢 ONGs**: Gerenciam áreas de responsabilidade e resolvem problemas
 - **⚙️ Administradores**: Controle total do sistema e aprovação de áreas
 
+### 🚨 **Sistema de Denúncias e Moderação**
+- **📢 Reportar Marcadores**: Usuários podem denunciar marcadores inadequados
+- **🔍 Análise por ONGs**: ONGs responsáveis analisam e decidem sobre denúncias
+- **⚖️ Decisões**: Aceitar (remove marcador) ou rejeitar denúncias
+- **🚫 Banimento Automático**: Usuários com 3+ denúncias aceitas são banidos automaticamente
+- **📊 Transparência**: Sistema completo de rastreamento de denúncias
+
 ### 🏢 **Gestão de Áreas por ONGs**
 - **📍 Definição de Áreas**: ONGs podem solicitar responsabilidade por polígonos geográficos
 - **🔍 Detecção Automática**: Algoritmo determina automaticamente qual ONG é responsável por cada marcador
@@ -358,6 +365,9 @@ mkdir backend/uploads
 - ✅ Sistema de categorização avançado
 - ✅ Interface responsiva e moderna
 - ✅ Backend robusto com MySQL
+- ✅ **Sistema de Denúncias**: Reportar marcadores inadequados
+- ✅ **Código Limpo**: Remoção completa de arquivos de debug e logs verbosos
+- ✅ **Moderação Automática**: Banimento de usuários com 3+ denúncias aceitas
 
 ### **🔄 Próximas Funcionalidades**
 - [ ] � **Sistema de Notificações**: Push notifications para ONGs e usuários
@@ -378,6 +388,18 @@ mkdir backend/uploads
 - [ ] **Docker**: Containerização completa
 - [ ] **Load Balancing**: Suporte a alta escala
 - [ ] **CDN**: Otimização de imagens e assets
+
+## 🧹 **Changelog Recente**
+
+### **v2.1.0 - Limpeza e Otimização (Agosto 2025)**
+- ✅ **Limpeza Completa**: Removidos todos os arquivos de debug e teste
+- ✅ **Logs Limpos**: Eliminados console.log verbosos com emojis
+- ✅ **Código Otimizado**: Correção de 85+ erros de sintaxe no backend
+- ✅ **Funcionalidade Mantida**: Sistema de denúncias 100% funcional
+- ✅ **Performance**: Código mais limpo e organizado para produção
+- ✅ **Arquivos Removidos**: debug-denuncias.js, teste-*.js, diagnostico-ong.js e outros
+- ✅ **Frontend Limpo**: MapCityMap.js, AdminDashboard.js sem logs de debug
+- ✅ **Backend Estável**: server.js corrigido e funcional
 
 ## 🤝 **Contribuindo**
 

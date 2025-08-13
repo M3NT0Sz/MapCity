@@ -3,6 +3,30 @@
 
 const API_BASE_URL = 'http://localhost:3001';
 
+// Função para testar conectividade com o servidor
+export const testarConectividade = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/test`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('✅ Servidor conectado:', data);
+      return true;
+    } else {
+      console.error('❌ Servidor retornou erro:', response.status);
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Erro de conectividade:', error);
+    return false;
+  }
+};
+
 // Função para obter o token do localStorage
 const getToken = () => {
   const token = localStorage.getItem('mapcity_token');
@@ -40,8 +64,13 @@ export async function apiRequest(endpoint, options = {}) {
     
     // Se o token expirou, remover do localStorage
     if (response.status === 401) {
+      console.warn('Token expirado, redirecionando para login');
       localStorage.removeItem('mapcity_token');
-      window.location.reload();
+      // Dar tempo para o contexto se atualizar
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
+      throw new Error('Sessão expirada. Por favor, faça login novamente.');
     }
 
     return response;
@@ -55,11 +84,27 @@ export async function apiRequest(endpoint, options = {}) {
 export const lugaresAPI = {
   // Buscar todos os lugares
   buscarTodos: async () => {
-    const response = await apiRequest('/lugares');
-    if (response.ok) {
-      return await response.json();
+    try {
+      const response = await apiRequest('/lugares');
+      if (response.ok) {
+        return await response.json();
+      }
+      
+      let errorMessage = 'Erro ao buscar lugares';
+      try {
+        const error = await response.json();
+        errorMessage = error.error || errorMessage;
+      } catch (parseError) {
+        console.error('Erro ao parsear resposta de erro:', parseError);
+      }
+      throw new Error(errorMessage);
+    } catch (error) {
+      console.error('Erro na requisição buscarTodos:', error);
+      if (error.message) {
+        throw error;
+      }
+      throw new Error('Erro de conexão com o servidor');
     }
-    throw new Error('Erro ao buscar lugares');
   },
 
   // Criar novo lugar
@@ -98,6 +143,39 @@ export const lugaresAPI = {
       return await response.json();
     }
     throw new Error('Erro ao deletar lugar');
+  },
+
+  // Denunciar lugar/marcador
+  denunciar: async (marcadorId, motivo, descricao) => {
+    try {
+      const response = await apiRequest('/denuncias', {
+        method: 'POST',
+        body: JSON.stringify({
+          marcador_id: marcadorId,
+          motivo: motivo,
+          descricao: descricao
+        }),
+      });
+      
+      if (response.ok) {
+        return await response.json();
+      }
+      
+      let errorMessage = 'Erro ao enviar denúncia';
+      try {
+        const error = await response.json();
+        errorMessage = error.error || errorMessage;
+      } catch (parseError) {
+        console.error('Erro ao parsear resposta de erro:', parseError);
+      }
+      throw new Error(errorMessage);
+    } catch (error) {
+      console.error('Erro na denúncia:', error);
+      if (error.message) {
+        throw error;
+      }
+      throw new Error('Erro de conexão com o servidor');
+    }
   },
 };
 
@@ -295,20 +373,33 @@ export const adminAPI = {
       throw new Error('Token não encontrado');
     }
 
-    const response = await fetch('http://localhost:3001/admin/areas', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+    try {
+      const response = await fetch('http://localhost:3001/admin/areas', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Erro interno do servidor';
+        try {
+          const error = await response.json();
+          errorMessage = error.error || errorMessage;
+        } catch (parseError) {
+          console.error('Erro ao parsear resposta de erro:', parseError);
+        }
+        throw new Error(errorMessage);
       }
-    });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Erro ao buscar áreas');
+      return await response.json();
+    } catch (error) {
+      if (error.message) {
+        throw error;
+      }
+      throw new Error('Erro de conexão com o servidor');
     }
-
-    return await response.json();
   },
 
   // Aprovar área
@@ -394,7 +485,7 @@ export const adminAPI = {
 export const usuariosAPI = {
   // Login
   login: async (email, senha) => {
-    const response = await fetch(`${API_BASE_URL}/login`, {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -412,7 +503,7 @@ export const usuariosAPI = {
 
   // Registro
   registrar: async (dadosUsuario) => {
-    const response = await fetch(`${API_BASE_URL}/registrar`, {
+    const response = await fetch(`${API_BASE_URL}/auth/registro`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -434,7 +525,7 @@ export const usuariosAPI = {
     if (!token) return null;
 
     try {
-      const response = await apiRequest('/verificar-login');
+      const response = await apiRequest('/auth/verificar');
       if (response.ok) {
         return await response.json();
       }
@@ -545,5 +636,6 @@ export default {
   usuariosAPI,
   denunciasAPI,
   uploadAPI,
-  apiRequest
+  apiRequest,
+  testarConectividade
 };
