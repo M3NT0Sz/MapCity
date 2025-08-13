@@ -22,15 +22,44 @@ const AdminAreasPanel = ({ visible, onClose, onAreaUpdate }) => {
   const carregarDados = async () => {
     setLoading(true);
     try {
-      const [pendentes, todas] = await Promise.all([
-        adminAreasAPI.buscarAreasPendentes(),
-        adminAreasAPI.buscarTodasAreas()
-      ]);
+      console.log('🔄 AdminAreasPanel: Carregando dados...');
+      
+      // Carregar pendentes primeiro (menos provável de falhar)
+      let pendentes = [];
+      let todas = [];
+      
+      try {
+        pendentes = await adminAreasAPI.buscarAreasPendentes();
+        console.log('✅ Áreas pendentes carregadas:', pendentes.length);
+      } catch (error) {
+        console.error('❌ Erro ao carregar áreas pendentes:', error);
+        pendentes = [];
+      }
+      
+      // Carregar todas as áreas (pode falhar)
+      try {
+        todas = await adminAreasAPI.buscarTodasAreas();
+        console.log('✅ Todas as áreas carregadas:', todas.length);
+      } catch (error) {
+        console.error('❌ Erro ao carregar todas as áreas:', error);
+        // Usar apenas as áreas pendentes como fallback
+        todas = pendentes;
+        Alert.alert(
+          'Aviso', 
+          'Não foi possível carregar todas as áreas. Mostrando apenas áreas pendentes.',
+          [{ text: 'OK' }]
+        );
+      }
+      
       setAreasPendentes(pendentes);
       setTodasAreas(todas);
+      
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-      Alert.alert('Erro', 'Não foi possível carregar as áreas');
+      console.error('❌ Erro crítico ao carregar dados:', error);
+      Alert.alert('Erro', 'Não foi possível carregar as áreas. Verifique sua conexão.');
+      // Definir arrays vazios em caso de erro total
+      setAreasPendentes([]);
+      setTodasAreas([]);
     } finally {
       setLoading(false);
     }

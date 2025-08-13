@@ -244,6 +244,16 @@ app.get('/test', (req, res) => {
   res.json({ message: 'Servidor funcionando!', timestamp: new Date().toISOString() });
 });
 
+// Endpoint de debug temporário para verificar usuários
+app.get('/debug/users', (req, res) => {
+  pool.query('SELECT id, nome, email, tipo FROM usuarios LIMIT 10', (err, results) => {
+    if (err) {
+      return res.status(500).json({ error: 'Erro de banco', details: err.message });
+    }
+    res.json({ users: results, count: results.length });
+  });
+});
+
 // =============================================================================
 // ROTAS DE AUTENTICAÇÃO
 // =============================================================================
@@ -682,21 +692,33 @@ app.get('/notificacoes', verificarToken, verificarPermissao(['ong']), (req, res)
   );
 });
 
-app.put('/notificacoes/:id/lida', verificarToken, verificarPermissao(['ong']), (req, res) => {
+app.put('/notificacoes/:id/lida', verificarToken, verificarPermissao(['ong', 'admin']), (req, res) => {
   const { id } = req.params;
   
-  pool.query(
-    'UPDATE notificacoes_ong SET lida = true WHERE id = ? AND ong_id = ?',
-    [id, req.usuario.ong_id],
-    (err, result) => {
-      if (err) {
-        console.error('Erro ao marcar notificação como lida:', err);
-        return res.status(500).json({ error: 'Erro interno do servidor' });
-      }
-      
-      res.json({ message: 'Notificação marcada como lida' });
+  // Para admin, permitir marcar qualquer notificação
+  // Para ONG, só permitir suas próprias notificações
+  let query, params;
+  
+  if (req.usuario.tipo === 'admin') {
+    query = 'UPDATE notificacoes_ong SET lida = true WHERE id = ?';
+    params = [id];
+  } else {
+    query = 'UPDATE notificacoes_ong SET lida = true WHERE id = ? AND ong_id = ?';
+    params = [id, req.usuario.ong_id];
+  }
+  
+  pool.query(query, params, (err, result) => {
+    if (err) {
+      console.error('Erro ao marcar notificação como lida:', err);
+      return res.status(500).json({ error: 'Erro interno do servidor' });
     }
-  );
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Notificação não encontrada ou sem permissão' });
+    }
+    
+    res.json({ message: 'Notificação marcada como lida' });
+  });
 });
 
 // =============================================================================
@@ -827,19 +849,22 @@ app.put('/admin/areas/:id/rejeitar', verificarToken, verificarPermissao(['admin'
 
 // Listar todas as áreas (apenas admin)
 app.get('/admin/areas', verificarToken, verificarPermissao(['admin']), (req, res) => {
+  console.log('🔍 GET /admin/areas chamado por admin');
+  
   pool.query(
     `SELECT a.*, u.nome as ong_nome, u.email as ong_email,
             admin.nome as aprovador_nome
      FROM areas_responsabilidade a 
      JOIN usuarios u ON a.ong_id = u.id 
      LEFT JOIN usuarios admin ON a.aprovada_por = admin.id
-     WHERE a.ativa = true 
      ORDER BY a.criada_em DESC`,
     (err, results) => {
       if (err) {
-        console.error('Erro ao buscar todas as áreas:', err);
-        return res.status(500).json({ error: 'Erro ao buscar áreas' });
+        console.error('❌ Erro ao buscar todas as áreas:', err);
+        return res.status(500).json({ error: 'Erro interno do servidor' });
       }
+      
+      console.log(`✅ Encontradas ${results.length} áreas`);
       res.json(results);
     }
   );
@@ -1276,6 +1301,7 @@ app.listen(PORT, () => {
   console.log('   GET  /areas - Listar áreas (ONG)');
   console.log('   POST /areas - Criar área (ONG) - Enviada para aprovação');
   console.log('   GET  /notificacoes - Listar notificações (ONG)');
+  console.log('   PUT  /notificacoes/:id/lida - Marcar notificação como lida (Admin/ONG)');
   console.log('   POST /upload - Upload de imagens');
   console.log('   GET  /admin/usuarios - Listar usuários (Admin)');
   console.log('   GET  /admin/areas/pendentes - Áreas pendentes (Admin)');

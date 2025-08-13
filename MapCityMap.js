@@ -1764,7 +1764,7 @@ export default function MapCityMap() {
   // Marcar notificação como lida
   const marcarNotificacaoLida = useCallback(async (notificacaoId) => {
     try {
-      await areasAPI.marcarNotificacaoLida(notificacaoId);
+      await areasAPI.marcarComoLida(notificacaoId);
       setNotificacoes(prev => 
         prev.map(notif => 
           notif.id === notificacaoId 
