@@ -1,4 +1,8 @@
-# 🗺️ MapCity - Plataforma Inteligente de Gestão Urbana
+# 🗺️ MapCity - Plataf### **🔐 Sistema de Autenticação**
+- **👤 Usuários**: Podem criar e visualizar denúncias (CPF obrigatório)
+- **🏢 ONGs**: Gerenciam áreas de responsabilidade e resolvem problemas (CNPJ obrigatório)
+- **⚙️ Administradores**: Controle total do sistema e aprovação de áreas
+- **🔒 Validação de Documentos**: Sistema completo de validação CPF/CNPJ em tempo real Inteligente de Gestão Urbana
 
 MapCity é uma aplicação web/mobile desenvolvida com **React Native + Expo** que permite aos cidadãos reportar problemas urbanos de forma interativa através de um mapa. O sistema possui **detecção automática de ONGs responsáveis** por área geográfica e sistema completo de autenticação multi-nível.
 
@@ -178,8 +182,10 @@ npm start
 - **Node.js** - Servidor backend
 - **Express.js** - Framework web
 - **MySQL** - Banco de dados relacional
-- **Multer** - Upload de arquivos
+- **bcrypt** - Hash seguro de senhas
 - **JWT** - Autenticação por tokens
+- **Multer** - Upload de arquivos
+- **Validação CPF/CNPJ** - Algoritmos oficiais brasileiros
 
 ### **Algoritmos Especializados**
 - **Ray Casting** - Detecção de pontos dentro de polígonos para identificar ONG responsável
@@ -205,17 +211,19 @@ npm start
 ```
 MapCity/
 ├── 📁 assets/              # Ícones e imagens da aplicação
-├── � api/                 # 🆕 API consolidada
+├── 📁 api/                 # 🆕 API consolidada
 │   └── index.js           # Todas as APIs unificadas
 ├── 📁 backend/            # 🆕 Servidor Node.js
 │   ├── 📁 sql/           # Scripts de banco de dados
 │   ├── 📁 uploads/       # Arquivos enviados pelos usuários
-│   ├── server.js         # Servidor principal
+│   ├── server.js         # 🔐 Servidor principal com autenticação
+│   ├── database.js       # 🗄️ Conexão MySQL otimizada
+│   ├── validador-documento.js # ✅ Validação CPF/CNPJ
 │   └── package.json      # Dependências do backend
 ├── 📁 public/             # Arquivos estáticos (web)
 ├── 📄 App.js              # Componente raiz + autenticação
 ├── 📄 MapCityMap.js       # 🚀 Componente principal do mapa com detecção de ONG
-├── 📄 AuthComponents.js   # 🆕 Sistema de autenticação completo
+├── 📄 AuthComponents.js   # 🔐 Sistema de autenticação completo
 ├── 📄 AdminAreasPanel.js  # 🆕 Painel administrativo de áreas
 ├── 📄 map-style.css       # Estilos do mapa
 ├── 📄 index.js            # Ponto de entrada
@@ -390,6 +398,16 @@ mkdir backend/uploads
 - [ ] **CDN**: Otimização de imagens e assets
 
 ## 🧹 **Changelog Recente**
+
+### **v2.2.0 - Sistema de Autenticação Completo (Agosto 2025)**
+- ✅ **Validação CPF/CNPJ**: Sistema completo de validação em tempo real
+- ✅ **Autenticação Real**: Salvamento seguro no banco MySQL
+- ✅ **Hash de Senhas**: bcrypt para máxima segurança
+- ✅ **Validação de Duplicatas**: Prevenção de emails e documentos duplicados
+- ✅ **Módulo Database**: Conexão robusta com MySQL
+- ✅ **Tipos de Usuário**: CPF obrigatório para usuários, CNPJ para ONGs
+- ✅ **API Funcional**: Endpoints de registro e login operacionais
+- ✅ **Cleanup Completo**: Removidos 20+ arquivos de teste e debug
 
 ### **v2.1.0 - Limpeza e Otimização (Agosto 2025)**
 - ✅ **Limpeza Completa**: Removidos todos os arquivos de debug e teste

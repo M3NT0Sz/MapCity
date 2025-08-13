@@ -193,7 +193,60 @@ export function RegisterModal({ visible, onClose, onSwitchToLogin }) {
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [tipo, setTipo] = useState('usuario');
+  const [documento, setDocumento] = useState('');
+  const [razaoSocial, setRazaoSocial] = useState('');
   const [carregando, setCarregando] = useState(false);
+  const [documentoValido, setDocumentoValido] = useState(null);
+
+  // Função para validar documento em tempo real
+  const validarDocumentoReal = async (doc) => {
+    if (!doc || doc.length < 11) {
+      setDocumentoValido(null);
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:3001/validar-documento', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ documento: doc }),
+      });
+
+      const result = await response.json();
+      setDocumentoValido(result);
+    } catch (error) {
+      console.error('Erro ao validar documento:', error);
+      setDocumentoValido({ valido: false, erro: 'Erro na validação' });
+    }
+  };
+
+  // Formatar documento enquanto digita
+  const formatarDocumento = (value) => {
+    const apenasNumeros = value.replace(/[^\d]/g, '');
+    
+    if (apenasNumeros.length <= 11) {
+      // Formato CPF: 000.000.000-00
+      return apenasNumeros.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    } else {
+      // Formato CNPJ: 00.000.000/0000-00
+      return apenasNumeros.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    }
+  };
+
+  const handleDocumentoChange = (value) => {
+    const formatted = formatarDocumento(value);
+    setDocumento(formatted);
+    
+    // Validar quando tiver tamanho suficiente
+    const apenasNumeros = value.replace(/[^\d]/g, '');
+    if (apenasNumeros.length === 11 || apenasNumeros.length === 14) {
+      validarDocumentoReal(value);
+    } else {
+      setDocumentoValido(null);
+    }
+  };
 
   const handleRegister = async () => {
     if (!nome || !email || !senha || !confirmarSenha) {
@@ -211,28 +264,84 @@ export function RegisterModal({ visible, onClose, onSwitchToLogin }) {
       return;
     }
 
+    // Validações específicas por tipo
+    if (tipo === 'ong') {
+      if (!documento) {
+        Alert.alert('Erro', 'CNPJ é obrigatório para ONGs');
+        return;
+      }
+
+      if (!documentoValido || !documentoValido.valido) {
+        Alert.alert('Erro', documentoValido?.erro || 'CNPJ inválido');
+        return;
+      }
+
+      if (documentoValido.tipo !== 'cnpj') {
+        Alert.alert('Erro', 'ONGs devem usar CNPJ, não CPF');
+        return;
+      }
+
+      if (!razaoSocial) {
+        Alert.alert('Erro', 'Razão social é obrigatória para ONGs');
+        return;
+      }
+    } else if (tipo === 'usuario') {
+      if (!documento) {
+        Alert.alert('Erro', 'CPF é obrigatório para usuários');
+        return;
+      }
+
+      if (!documentoValido || !documentoValido.valido) {
+        Alert.alert('Erro', documentoValido?.erro || 'CPF inválido');
+        return;
+      }
+
+      if (documentoValido.tipo !== 'cpf') {
+        Alert.alert('Erro', 'Usuários devem usar CPF, não CNPJ');
+        return;
+      }
+    }
+
     setCarregando(true);
 
     try {
+      const dadosRegistro = {
+        nome,
+        email,
+        senha,
+        tipo,
+        documento // Enviar documento para todos os tipos
+      };
+
+      // Adicionar campos específicos para ONG
+      if (tipo === 'ong') {
+        if (razaoSocial) {
+          dadosRegistro.razaoSocial = razaoSocial;
+        }
+      }
+
       const response = await fetch('http://localhost:3001/auth/registro', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          nome,
-          email,
-          senha,
-          tipo
-        }),
+        body: JSON.stringify(dadosRegistro),
       });
 
       const data = await response.json();
 
       if (response.ok) {
+        let mensagem = 'Cadastro realizado com sucesso!';
+        
+        if (data.requer_verificacao) {
+          mensagem += '\n\nSua ONG foi cadastrada e está aguardando verificação do documento pelos administradores. Você poderá fazer login após a aprovação.';
+        } else {
+          mensagem += ' Você pode fazer login agora.';
+        }
+
         Alert.alert(
           'Sucesso',
-          'Cadastro realizado com sucesso! Você pode fazer login agora.',
+          mensagem,
           [
             {
               text: 'OK',
@@ -243,6 +352,9 @@ export function RegisterModal({ visible, onClose, onSwitchToLogin }) {
                 setSenha('');
                 setConfirmarSenha('');
                 setTipo('usuario');
+                setDocumento('');
+                setRazaoSocial('');
+                setDocumentoValido(null);
                 // Fechar modal de registro e abrir login
                 onClose();
                 onSwitchToLogin();
@@ -251,7 +363,19 @@ export function RegisterModal({ visible, onClose, onSwitchToLogin }) {
           ]
         );
       } else {
-        Alert.alert('Erro', data.error || 'Erro ao criar conta');
+        // Mensagens de erro mais específicas
+        let mensagemErro = data.error || 'Erro ao criar conta';
+        
+        if (data.error === 'Email já cadastrado') {
+          mensagemErro = 'Este email já está em uso. Tente fazer login ou use outro email.';
+        } else if (data.error && (data.error.includes('CPF já está cadastrado') || data.error.includes('CNPJ já está cadastrado'))) {
+          mensagemErro = 'Este documento já está cadastrado. Verifique os dados ou entre em contato com o administrador.';
+        } else if (data.error && data.error.includes('Tabela')) {
+          mensagemErro = 'Erro de configuração do banco de dados. Contate o administrador.';
+        }
+        
+        Alert.alert('Erro no Cadastro', mensagemErro);
+        console.error('Erro detalhado:', data);
       }
     } catch (error) {
       console.error('Erro no registro:', error);
@@ -305,7 +429,12 @@ export function RegisterModal({ visible, onClose, onSwitchToLogin }) {
             <View style={styles.tipoOptions}>
               <TouchableOpacity 
                 style={[styles.tipoOption, tipo === 'usuario' && styles.tipoOptionSelected]}
-                onPress={() => setTipo('usuario')}
+                onPress={() => {
+                  setTipo('usuario');
+                  setDocumento('');
+                  setRazaoSocial('');
+                  setDocumentoValido(null);
+                }}
               >
                 <Text style={[styles.tipoOptionText, tipo === 'usuario' && styles.tipoOptionTextSelected]}>
                   👤 Usuário
@@ -320,6 +449,65 @@ export function RegisterModal({ visible, onClose, onSwitchToLogin }) {
                 </Text>
               </TouchableOpacity>
             </View>
+          </View>
+
+          {/* Campo de documento - CPF para usuários, CNPJ para ONGs */}
+          <View style={styles.documentoContainer}>
+            <TextInput
+              style={[
+                styles.input,
+                documentoValido === null ? {} :
+                documentoValido.valido ? styles.inputValid : styles.inputInvalid
+              ]}
+              placeholder={tipo === 'ong' ? "CNPJ da ONG" : "CPF do usuário"}
+              value={documento}
+              onChangeText={handleDocumentoChange}
+              keyboardType="numeric"
+              maxLength={18}
+            />
+            {documentoValido && (
+              <Text style={[
+                styles.validationText,
+                documentoValido.valido ? styles.validationSuccess : styles.validationError
+              ]}>
+                {documentoValido.valido 
+                  ? `✅ ${documentoValido.tipo?.toUpperCase()} válido` 
+                  : `❌ ${documentoValido.erro}`
+                }
+              </Text>
+            )}
+          </View>
+
+          {/* Campos específicos para ONG */}
+          {tipo === 'ong' && (
+            <>
+              <TextInput
+                style={styles.input}
+                placeholder="Razão Social da ONG"
+                value={razaoSocial}
+                onChangeText={setRazaoSocial}
+                autoCapitalize="words"
+              />
+            </>
+          )}
+
+          {/* Informações sobre verificação de documento */}
+          <View style={styles.ongInfo}>
+            <Text style={styles.ongInfoTitle}>ℹ️ Informações Importantes:</Text>
+            <Text style={styles.ongInfoText}>
+              • {tipo === 'ong' ? 'ONGs usam CNPJ' : 'Usuários usam CPF'}
+            </Text>
+            <Text style={styles.ongInfoText}>
+              • O documento será verificado pelos administradores
+            </Text>
+            {tipo === 'ong' && (
+              <Text style={styles.ongInfoText}>
+                • Você poderá fazer login após a aprovação
+              </Text>
+            )}
+            <Text style={styles.ongInfoText}>
+              • Mantenha os dados atualizados e verdadeiros
+            </Text>
           </View>
           
           <TouchableOpacity 
@@ -529,5 +717,46 @@ const styles = {
     color: '#007AFF',
     fontSize: 14,
     textDecorationLine: 'underline',
+  },
+  documentoContainer: {
+    marginBottom: 15,
+  },
+  inputValid: {
+    borderColor: '#4CAF50',
+    borderWidth: 2,
+  },
+  inputInvalid: {
+    borderColor: '#f44336',
+    borderWidth: 2,
+  },
+  validationText: {
+    fontSize: 12,
+    marginTop: 5,
+    marginLeft: 5,
+  },
+  validationSuccess: {
+    color: '#4CAF50',
+  },
+  validationError: {
+    color: '#f44336',
+  },
+  ongInfo: {
+    backgroundColor: '#e3f2fd',
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 15,
+    borderLeftWidth: 4,
+    borderLeftColor: '#2196F3',
+  },
+  ongInfoTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#1976D2',
+    marginBottom: 8,
+  },
+  ongInfoText: {
+    fontSize: 12,
+    color: '#1976D2',
+    marginBottom: 4,
   },
 };
