@@ -13,6 +13,7 @@ import {
 import { useAuth } from './AuthComponents';
 import { lugaresAPI, uploadAPI, areasAPI, userAPI } from './api';
 import AdminAreasPanel from './AdminAreasPanel';
+import AdminDashboard from './AdminDashboard';
 
 // Tema moderno integrado
 const modernTheme = {
@@ -693,6 +694,7 @@ export default function MapCityMap() {
   const [showNotificacoes, setShowNotificacoes] = useState(false);
   const [isNotificationModalVisible, setIsNotificationModalVisible] = useState(false);
   const [isAdminAreasPanelVisible, setIsAdminAreasPanelVisible] = useState(false);
+  const [isAdminDashboardVisible, setIsAdminDashboardVisible] = useState(false);
   const [areaParaExcluir, setAreaParaExcluir] = useState(null);
   const [marcadorParaExcluir, setMarcadorParaExcluir] = useState(null);
 
@@ -2042,9 +2044,50 @@ export default function MapCityMap() {
 
             {/* Botões para Admin */}
             {usuario.tipo === 'admin' && (
+              <>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: modernTheme.colors.danger,
+                    paddingHorizontal: modernTheme.spacing.md,
+                    paddingVertical: modernTheme.spacing.sm,
+                    borderRadius: modernTheme.borderRadius.md,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: modernTheme.spacing.xs
+                  }}
+                  onPress={() => setIsAdminAreasPanelVisible(true)}
+                >
+                  <Text style={{ color: 'white', fontSize: 16 }}>🗺️</Text>
+                  <Text style={{ color: 'white', fontWeight: 'bold' }}>
+                    Gerenciar Áreas
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: modernTheme.colors.secondary,
+                    paddingHorizontal: modernTheme.spacing.md,
+                    paddingVertical: modernTheme.spacing.sm,
+                    borderRadius: modernTheme.borderRadius.md,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: modernTheme.spacing.xs
+                  }}
+                  onPress={() => setIsAdminDashboardVisible(true)}
+                >
+                  <Text style={{ color: 'white', fontSize: 16 }}>🛠️</Text>
+                  <Text style={{ color: 'white', fontWeight: 'bold' }}>
+                    Painel Admin
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {/* Botão para ONGs */}
+            {usuario.tipo === 'ong' && (
               <TouchableOpacity
                 style={{
-                  backgroundColor: modernTheme.colors.danger,
+                  backgroundColor: modernTheme.colors.secondary,
                   paddingHorizontal: modernTheme.spacing.md,
                   paddingVertical: modernTheme.spacing.sm,
                   borderRadius: modernTheme.borderRadius.md,
@@ -2052,11 +2095,11 @@ export default function MapCityMap() {
                   alignItems: 'center',
                   gap: modernTheme.spacing.xs
                 }}
-                onPress={() => setIsAdminAreasPanelVisible(true)}
+                onPress={() => setIsAdminDashboardVisible(true)}
               >
-                <Text style={{ color: 'white', fontSize: 16 }}>🗺️</Text>
+                <Text style={{ color: 'white', fontSize: 16 }}>📊</Text>
                 <Text style={{ color: 'white', fontWeight: 'bold' }}>
-                  Gerenciar Áreas
+                  Painel ONG
                 </Text>
               </TouchableOpacity>
             )}
@@ -3425,6 +3468,12 @@ export default function MapCityMap() {
           console.log('🔄 Atualizando áreas após ação do admin');
           carregarAreas();
         }}
+      />
+
+      {/* Painel Administrativo Completo */}
+      <AdminDashboard
+        visible={isAdminDashboardVisible}
+        onClose={() => setIsAdminDashboardVisible(false)}
       />
 
       {/* Modal de Exclusão de Área (ONG) */}
