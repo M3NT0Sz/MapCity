@@ -1794,7 +1794,9 @@ export default function MapCityMap() {
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
-        elevation: 3
+        elevation: 5,
+        zIndex: 9999,
+        position: 'relative'
       }}>
         <View style={{
           flexDirection: 'row',
@@ -1923,7 +1925,9 @@ export default function MapCityMap() {
             flexDirection: 'row',
             marginTop: modernTheme.spacing.md,
             gap: modernTheme.spacing.sm,
-            flexWrap: 'wrap'
+            flexWrap: 'wrap',
+            zIndex: 10000,
+            position: 'relative'
           }}>
             {/* Botões para ONGs */}
             {usuario.tipo === 'ong' && (
@@ -2053,9 +2057,19 @@ export default function MapCityMap() {
                     borderRadius: modernTheme.borderRadius.md,
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: modernTheme.spacing.xs
+                    gap: modernTheme.spacing.xs,
+                    elevation: 10,
+                    zIndex: 10000,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.25,
+                    shadowRadius: 3.84,
                   }}
-                  onPress={() => setIsAdminAreasPanelVisible(true)}
+                  onPress={() => {
+                    console.log('🛠️ Botão Admin Areas clicado!');
+                    setIsAdminAreasPanelVisible(true);
+                  }}
+                  activeOpacity={0.7}
                 >
                   <Text style={{ color: 'white', fontSize: 16 }}>🗺️</Text>
                   <Text style={{ color: 'white', fontWeight: 'bold' }}>
@@ -2071,9 +2085,19 @@ export default function MapCityMap() {
                     borderRadius: modernTheme.borderRadius.md,
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: modernTheme.spacing.xs
+                    gap: modernTheme.spacing.xs,
+                    elevation: 10,
+                    zIndex: 10000,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.25,
+                    shadowRadius: 3.84,
                   }}
-                  onPress={() => setIsAdminDashboardVisible(true)}
+                  onPress={() => {
+                    console.log('🛠️ Botão Painel Admin clicado!');
+                    setIsAdminDashboardVisible(true);
+                  }}
+                  activeOpacity={0.7}
                 >
                   <Text style={{ color: 'white', fontSize: 16 }}>🛠️</Text>
                   <Text style={{ color: 'white', fontWeight: 'bold' }}>
@@ -2093,9 +2117,19 @@ export default function MapCityMap() {
                   borderRadius: modernTheme.borderRadius.md,
                   flexDirection: 'row',
                   alignItems: 'center',
-                  gap: modernTheme.spacing.xs
+                  gap: modernTheme.spacing.xs,
+                  elevation: 10,
+                  zIndex: 10000,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 3.84,
                 }}
-                onPress={() => setIsAdminDashboardVisible(true)}
+                onPress={() => {
+                  console.log('📊 Botão Painel ONG clicado!');
+                  setIsAdminDashboardVisible(true);
+                }}
+                activeOpacity={0.7}
               >
                 <Text style={{ color: 'white', fontSize: 16 }}>📊</Text>
                 <Text style={{ color: 'white', fontWeight: 'bold' }}>

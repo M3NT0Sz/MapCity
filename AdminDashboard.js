@@ -95,10 +95,23 @@ const AdminDashboard = ({ visible, onClose }) => {
     try {
       const response = await lugaresAPI.buscarTodos();
       
+      // Normalizar coordenadas (converter strings para números se necessário)
+      const marcadoresNormalizados = response.map(marcador => ({
+        ...marcador,
+        latitude: typeof marcador.latitude === 'string' ? parseFloat(marcador.latitude) : marcador.latitude,
+        longitude: typeof marcador.longitude === 'string' ? parseFloat(marcador.longitude) : marcador.longitude
+      }));
+      
       if (usuario.tipo === 'ong') {
         // Para ONGs, filtrar apenas marcadores em suas áreas aprovadas
         const areasAprovadas = todasAreas.filter(area => area.status === 'aprovada');
-        const marcadoresFiltrados = response.filter(marcador => {
+        const marcadoresFiltrados = marcadoresNormalizados.filter(marcador => {
+          // Verificar se as coordenadas são válidas
+          if (typeof marcador.latitude !== 'number' || typeof marcador.longitude !== 'number' || 
+              isNaN(marcador.latitude) || isNaN(marcador.longitude)) {
+            return false;
+          }
+          
           return areasAprovadas.some(area => 
             pontoDentroDoPoligono(
               { lat: marcador.latitude, lng: marcador.longitude },
@@ -108,7 +121,7 @@ const AdminDashboard = ({ visible, onClose }) => {
         });
         setMarcadores(marcadoresFiltrados);
       } else {
-        setMarcadores(response);
+        setMarcadores(marcadoresNormalizados);
       }
     } catch (error) {
       console.error('Erro ao carregar marcadores:', error);
@@ -443,7 +456,11 @@ const AdminDashboard = ({ visible, onClose }) => {
           <Text style={styles.cardText}>Tipo: {marcador.tipo}</Text>
           <Text style={styles.cardText}>Descrição: {marcador.descricao}</Text>
           <Text style={styles.cardText}>
-            Localização: {marcador.latitude?.toFixed(6)}, {marcador.longitude?.toFixed(6)}
+            Localização: {
+              typeof marcador.latitude === 'number' && typeof marcador.longitude === 'number'
+                ? `${marcador.latitude.toFixed(6)}, ${marcador.longitude.toFixed(6)}`
+                : `${marcador.latitude || 'N/A'}, ${marcador.longitude || 'N/A'}`
+            }
           </Text>
           <Text style={styles.cardText}>
             Criado em: {new Date(marcador.criado_em).toLocaleDateString()}
