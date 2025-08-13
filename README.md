@@ -77,12 +77,13 @@ setup-security.bat
 chmod +x setup-security.sh && ./setup-security.sh
 
 # 2. Configure o banco de dados MySQL
-# Execute os scripts SQL em /backend/sql/ na seguinte ordem:
-# - create_usuarios.sql
-# - create_lugares.sql
-# - create_denuncias_table.sql
-# - create_areas_responsabilidade.sql
-# - add_area_approval_system.sql
+# Execute o script de setup completo (RECOMENDADO):
+# Windows:
+cd backend && setup.bat
+# Linux/Mac:
+cd backend && ./setup.sh
+# Ou configure apenas o banco:
+mysql -u root -p < backend/sql/database_setup.sql
 
 # 3. IMPORTANTE: Configure sua senha do banco no arquivo .env:
 # DB_PASSWORD=sua_senha_mysql_aqui

@@ -8,7 +8,7 @@ async function gerarSenhasHash() {
     const hash = await bcrypt.hash(senhaSimples, saltRounds);
     console.log('Senha:', senhaSimples);
     console.log('Hash:', hash);
-    console.log('\nUse este hash no arquivo create_usuarios.sql');
+    console.log('\nUse este hash no arquivo sql/database_setup.sql');
   } catch (error) {
     console.error('Erro ao gerar hash:', error);
   }

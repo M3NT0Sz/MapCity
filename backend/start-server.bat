@@ -1,5 +1,6 @@
 @echo off
-echo Iniciando servidor MapCity Backend...
-cd /d "c:\Users\mathe\Documents\MapCity\backend"
+echo 🚀 Iniciando MapCity Backend...
+echo.
+cd /d "%~dp0"
 node server.js
 pause
