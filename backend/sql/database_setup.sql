@@ -12,6 +12,23 @@ USE mapcity;
 -- Armazena os marcadores de problemas/locais no mapa
 -- ============================================================================
 
+
+-- ============================================================================
+-- TABELA: ongs
+CREATE TABLE IF NOT EXISTS ongs (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nome VARCHAR(100) NOT NULL,
+  descricao TEXT,
+  email VARCHAR(100) UNIQUE NOT NULL,
+  telefone VARCHAR(20),
+  endereco TEXT,
+  area_atuacao VARCHAR(100),
+  ativo BOOLEAN DEFAULT TRUE,
+  criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_ativo (ativo),
+  INDEX idx_area_atuacao (area_atuacao)
+);
+
 -- ============================================================================
 -- TABELA: usuarios
 CREATE TABLE IF NOT EXISTS usuarios (
