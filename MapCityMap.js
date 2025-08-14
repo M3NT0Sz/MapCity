@@ -1,21 +1,10 @@
-import React, { useState, useCallback } from 'react';
-import './map-style.css';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  Modal, 
-  TextInput, 
-  ScrollView, 
-  Alert,
-  Platform 
-} from 'react-native';
-import { useAuth } from './AuthComponents';
-import { lugaresAPI, uploadAPI, areasAPI, userAPI } from './api';
+import { lugaresAPI, areasAPI, uploadAPI, usuariosAPI as userAPI } from './api';
 import AdminAreasPanel from './AdminAreasPanel';
 import AdminDashboard from './AdminDashboard';
-
-// Tema moderno integrado
+import { Platform, Modal, ScrollView, TextInput, Alert } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { useAuth } from './AuthComponents';
 const modernTheme = {
   colors: {
     primary: '#2E7D32',
@@ -70,7 +59,7 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
   }, [onMapClick]);
 
   React.useEffect(() => {
-    console.log('Iniciando carregamento do mapa...');
+  // ...log removido...
     
     // Carrega CSS do Leaflet primeiro
     if (!document.querySelector('link[href*="leaflet"]')) {
@@ -78,41 +67,41 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
       cssLink.rel = 'stylesheet';
       cssLink.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
       document.head.appendChild(cssLink);
-      console.log('CSS do Leaflet carregado');
+  // ...log removido...
     }
     
     // JS do Leaflet
     if (!mapRef.current) {
-      console.error('mapRef.current não existe!');
+  // ...erro removido...
       return;
     }
     if (window.L) {
-      console.log('Leaflet já carregado:', window.L);
+  // ...log removido...
       initMap();
     } else {
-      console.log('Carregando script do Leaflet...');
+  // ...log removido...
       const script = document.createElement('script');
       script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
       script.onload = () => {
-        console.log('Script do Leaflet carregado:', window.L);
+  // ...log removido...
         initMap();
       };
-      script.onerror = () => console.error('Erro ao carregar Leaflet');
+  script.onerror = () => {};
       document.head.appendChild(script);
       return;
     }
     function initMap() {
       if (!mapRef.current) {
-        console.error('mapRef.current não existe na inicialização!');
+  // ...erro removido...
         return;
       }
       if (!window.L) {
-        console.error('Leaflet não está disponível!');
+  // ...erro removido...
         return;
       }
       
       if (isInitializing) {
-        console.log('Mapa já está sendo inicializado, aguardando...');
+  // ...log removido...
         return;
       }
       
@@ -120,7 +109,7 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
       
       // Verificar se já existe um mapa no container
       if (window.mapInstance) {
-        console.log('Mapa já existe, removendo antes de criar novo...');
+  // ...log removido...
         try {
           window.mapInstance.remove();
           window.mapInstance = null;
@@ -131,11 +120,11 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
       
       // Limpar o container se necessário
       if (mapRef.current._leaflet_id) {
-        console.log('Container já inicializado, limpando...');
+  // ...log removido...
         delete mapRef.current._leaflet_id;
       }
       
-      console.log('Inicializando mapa Leaflet...');
+  // ...log removido...
       try {
         const map = window.L.map(mapRef.current).setView([-22.1207, -51.3889], 13);
         window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -145,7 +134,7 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
           if (e.originalEvent && e.originalEvent.target && 
               (e.originalEvent.target.closest('.leaflet-marker-icon') || 
                e.originalEvent.target.closest('path'))) {
-            console.log('Clique foi em um marcador, ignorando clique do mapa');
+            // ...log removido...
             return;
           }
           const { lat, lng } = e.latlng;
@@ -155,11 +144,11 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
               isNaN(lat) || isNaN(lng) || 
               lat < -90 || lat > 90 || 
               lng < -180 || lng > 180) {
-            console.error('Coordenadas de clique inválidas:', { lat, lng });
+            // ...erro removido...
             return;
           }
           
-          console.log('Clique no mapa:', lat, lng);
+          // ...log removido...
           onMapClickRef.current(lat, lng);
         });
         const style = document.createElement('style');
@@ -184,12 +173,12 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
         `;
         document.head.appendChild(style);
         setMapLoaded(true);
-        console.log('Mapa carregado com sucesso!');
+  // ...log removido...
         window.mapInstance = map;
         window.markersAdded = new Set();
         setIsInitializing(false);
       } catch (error) {
-        console.error('Erro ao criar mapa:', error);
+  // ...erro removido...
         setIsInitializing(false);
       }
     }
@@ -201,7 +190,7 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
     // Cleanup function
     return () => {
       if (window.mapInstance) {
-        console.log('Limpando mapa no cleanup...');
+  // ...log removido...
         try {
           window.mapInstance.remove();
           window.mapInstance = null;
@@ -218,7 +207,7 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
   React.useEffect(() => {
     if (!mapLoaded || !window.mapInstance) return;
 
-    console.log('Atualizando marcadores:', markers.length);
+  // ...log removido...
 
     // Limpa todos os marcadores existentes
     window.mapInstance.eachLayer((layer) => {
@@ -238,7 +227,7 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
           isNaN(marker.lat) || isNaN(marker.lng) || 
           marker.lat < -90 || marker.lat > 90 || 
           marker.lng < -180 || marker.lng > 180) {
-        console.error('Marcador com coordenadas inválidas ignorado:', marker);
+  // ...erro removido...
         return; // Pula este marcador
       }
 
@@ -669,6 +658,8 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
 
 // Componente principal
 export default function MapCityMap() {
+  // Estado para erro de imagem no carrossel
+  const [imageError, setImageError] = useState(false);
   const { usuario, token, estaLogado, logout } = useAuth();
   
   
@@ -686,6 +677,11 @@ export default function MapCityMap() {
   const [description, setDescription] = useState('');
   const [selectedImages, setSelectedImages] = useState([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Resetar erro de imagem ao trocar de imagem no carrossel
+  React.useEffect(() => {
+    setImageError(false);
+  }, [currentImageIndex, selectedMarker]);
   const [markerAddress, setMarkerAddress] = useState('');
   const [addressServiceFailed, setAddressServiceFailed] = useState(false);
   const [clickAddress, setClickAddress] = useState('');
@@ -890,86 +886,39 @@ export default function MapCityMap() {
   React.useEffect(() => {
     const carregarLugares = async () => {
       try {
-        // Primeiro, testar conectividade com o servidor
         const { testarConectividade } = await import('./api');
         const conectado = await testarConectividade();
-        
-        if (!conectado) {
-          throw new Error('Servidor não está respondendo');
-        }
-        
+        if (!conectado) throw new Error('Servidor não está respondendo');
         const data = await lugaresAPI.buscarTodos();
         console.log('📍 Dados recebidos do backend:', data);
-        
         const adaptados = data.map(lugar => {
-          console.log('Processando lugar:', lugar.id, 'Coordenadas:', {
-            latitude: lugar.latitude, 
-            longitude: lugar.longitude,
-            tipos: {
-              lat: typeof lugar.latitude,
-              lng: typeof lugar.longitude
-            }
-          });
-          
           let images = [];
-          
           if (lugar.imagem) {
             try {
-              // Verificar se é string antes de chamar trim
               if (typeof lugar.imagem === 'string') {
                 const imagemTrimmed = lugar.imagem.trim();
                 if (imagemTrimmed === '') {
-                  console.log('Campo imagem vazio para lugar', lugar.id);
                   images = [];
                 } else {
                   const parsed = JSON.parse(imagemTrimmed);
-                  console.log('Imagens parseadas para lugar', lugar.id, ':', parsed);
                   images = Array.isArray(parsed) ? parsed : [];
                 }
               } else if (Array.isArray(lugar.imagem)) {
-                // Se já é um array, usar diretamente
-                console.log('Imagem já é array para lugar', lugar.id, ':', lugar.imagem);
                 images = lugar.imagem;
               } else {
-                // Se é outro tipo, tentar converter para string e depois parsear
-                console.log('Tentando converter tipo', typeof lugar.imagem, 'para string');
                 const imagemString = String(lugar.imagem);
                 const parsed = JSON.parse(imagemString);
                 images = Array.isArray(parsed) ? parsed : [];
               }
             } catch (e) {
-              console.error('Erro ao parsear imagem para lugar', lugar.id, ':', e);
-              console.error('Conteúdo do campo imagem:', lugar.imagem);
-              console.error('Tipo do conteúdo:', typeof lugar.imagem);
               images = [];
             }
-          } else {
-            console.log('Campo imagem null/undefined para lugar', lugar.id);
-            images = [];
           }
-          
-          // Validar coordenadas antes de criar o objeto
           const lat = parseFloat(lugar.latitude);
           const lng = parseFloat(lugar.longitude);
-          
-          // Validação mais rigorosa das coordenadas
-          if (isNaN(lat) || isNaN(lng) || 
-              !isFinite(lat) || !isFinite(lng) ||
-              lat < -90 || lat > 90 || 
-              lng < -180 || lng > 180 ||
-              lugar.latitude === null || lugar.latitude === undefined ||
-              lugar.longitude === null || lugar.longitude === undefined) {
-            console.error('Coordenadas inválidas para lugar', lugar.id, ':', {
-              latitude: lugar.latitude,
-              longitude: lugar.longitude,
-              parsedLat: lat,
-              parsedLng: lng,
-              latType: typeof lugar.latitude,
-              lngType: typeof lugar.longitude
-            });
-            return null; // Retorna null para filtrar depois
+          if (isNaN(lat) || isNaN(lng) || !isFinite(lat) || !isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180 || lugar.latitude === null || lugar.latitude === undefined || lugar.longitude === null || lugar.longitude === undefined) {
+            return null;
           }
-          
           return {
             id: lugar.id,
             lat: lat,
@@ -977,61 +926,42 @@ export default function MapCityMap() {
             type: lugar.tipo || 'outro',
             description: lugar.descricao || lugar.nome,
             images: images,
-            resolved: lugar.resolvido || false,
+            resolved: !!lugar.resolvido,
             resolvedAt: lugar.resolvido_em || null,
-            // Incluir informações da ONG se disponível no backend
             area_ong_id: lugar.area_ong_id || null,
             area_ong_nome: lugar.area_ong_nome || null,
             area_ong_email: lugar.area_ong_email || null
           };
-        }).filter(lugar => lugar !== null); // Remove objetos com coordenadas inválidas
-        
-        
-        // Para marcadores sem informação de ONG, tentar calcular dinamicamente
-        // Isso será feito após as áreas serem carregadas, no useEffect
+        }).filter(lugar => lugar !== null);
         setMarkers(adaptados);
       } catch (error) {
         console.error('❌ Erro ao buscar lugares:', error);
-        
-        // Verificar se é erro de autenticação
-        if (error.message.includes('Token') || error.message.includes('401') || error.message.includes('Sessão expirada')) {
-          Alert.alert(
-            'Sessão Expirada', 
-            'Sua sessão expirou. Por favor, faça login novamente.',
-            [{ text: 'OK', onPress: () => logout() }]
-          );
-        } else {
-          // Verificar conectividade com servidor
-          const { testarConectividade } = await import('./api');
-          const conectado = await testarConectividade();
-          
-          if (!conectado) {
-            Alert.alert(
-              'Erro de Conexão',
-              'Não foi possível conectar ao servidor. Verifique sua conexão de internet.'
-            );
-          } else {
-            Alert.alert(
-              'Erro',
-              `Não foi possível carregar os marcadores: ${error.message}`
-            );
-          }
-        }
       }
     };
 
+    const carregarAreasPublicas = async () => {
+      try {
+        const data = await areasAPI.buscarAreasAprovadas();
+        setAreas(data);
+      } catch (error) {
+        console.error('❌ Erro ao carregar áreas públicas:', error);
+      }
+    };
+
+    // Sempre carregar marcadores e áreas públicas
+    carregarLugares();
+    carregarAreasPublicas();
+
+    // Se logado, carregar áreas privadas e notificações
     if (estaLogado) {
-      carregarLugares();
-      
-      // Carregar áreas para todos os tipos de usuário
-      carregarAreas();
-      
-      // Carregar notificações apenas se for ONG
-      if (usuario.tipo === 'ong') {
-        carregarNotificacoes();
+      if (usuario) {
+        carregarAreas();
+        if (usuario.tipo === 'ong') {
+          carregarNotificacoes();
+        }
       }
     }
-  }, [estaLogado]);
+  }, [estaLogado, usuario]);
 
   // Carregar áreas de responsabilidade para todos os usuários
   const carregarAreas = useCallback(async () => {
@@ -1594,11 +1524,14 @@ export default function MapCityMap() {
   };
 
   const handleMarkerClick = useCallback((marker) => {
+    if (!marker || typeof marker !== 'object') {
+      console.warn('Tentativa de clicar em marcador inválido:', marker);
+      return;
+    }
     console.log('🖱️ Marcador clicado - Iniciando handleMarkerClick');
     console.log('📍 Dados do marcador:', marker);
     console.log('🖼️ Imagens do marcador:', marker.images);
     console.log('🔧 Tipo das imagens:', typeof marker.images);
-    
     try {
       setSelectedMarker(marker);
       setCurrentImageIndex(0);
@@ -1732,12 +1665,14 @@ export default function MapCityMap() {
       return;
     }
 
-    try {
 
+    try {
+      // Enviar também o denunciante_id (usuario.id)
       await lugaresAPI.denunciar(
         marcadorParaDenunciar.id,
         motivoDenuncia,
-        descricaoDenuncia || 'Denúncia enviada pelo usuário'
+        descricaoDenuncia || 'Denúncia enviada pelo usuário',
+        usuario?.id // novo campo
       );
 
       // Fechar modais
@@ -1847,22 +1782,6 @@ export default function MapCityMap() {
           alignItems: 'center',
           justifyContent: 'space-between'
         }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{
-              fontSize: 24,
-              fontWeight: 'bold',
-              color: modernTheme.colors.primary,
-              marginBottom: 4
-            }}>
-              🗺️ MapCity
-            </Text>
-            <Text style={{
-              fontSize: 14,
-              color: modernTheme.colors.textSecondary
-            }}>
-              {usuario ? `Olá, ${usuario.nome || usuario.email}` : "Mapeamento Colaborativo"}
-            </Text>
-          </View>
           
           {/* Badge do tipo de usuário */}
           {usuario && (
@@ -1890,7 +1809,6 @@ export default function MapCityMap() {
         {/* Estatísticas */}
         <View style={{
           flexDirection: 'row',
-          marginTop: modernTheme.spacing.md,
           gap: modernTheme.spacing.sm
         }}>
           <View style={{
@@ -2810,10 +2728,10 @@ export default function MapCityMap() {
                     fontSize: 18,
                     fontWeight: 'bold',
                     marginTop: modernTheme.spacing.xs,
-                    color: selectedMarker.resolved ? modernTheme.colors.success : modernTheme.colors.primary
+                    color: selectedMarker && selectedMarker.resolved ? modernTheme.colors.success : modernTheme.colors.primary
                   }}>
-                    {PROBLEM_TYPES.find(t => t.value === selectedMarker.type)?.emoji} {' '}
-                    {PROBLEM_TYPES.find(t => t.value === selectedMarker.type)?.label || 'Problema'}
+                    {selectedMarker && PROBLEM_TYPES.find(t => t.value === selectedMarker.type)?.emoji} {' '}
+                    {selectedMarker && PROBLEM_TYPES.find(t => t.value === selectedMarker.type)?.label || 'Problema'}
                   </Text>
                 </View>
 
@@ -2847,10 +2765,18 @@ export default function MapCityMap() {
                     }}>
                       <img 
                         src={
-                          selectedMarker.images[currentImageIndex]?.data || 
-                          (selectedMarker.images[currentImageIndex]?.startsWith('/uploads/') 
-                            ? `http://localhost:3001${selectedMarker.images[currentImageIndex]}`
-                            : selectedMarker.images[currentImageIndex])
+                          imageError
+                            ? '/logoMap.png'
+                            : (() => {
+                                const img = selectedMarker.images[currentImageIndex];
+                                if (!img) return '/logoMap.png';
+                                if (typeof img === 'object' && img.data) return img.data;
+                                const path = typeof img === 'object' && img.path ? img.path : img;
+                                if (typeof path === 'string' && path.startsWith('/uploads/')) {
+                                  return `http://localhost:3001${path}`;
+                                }
+                                return path;
+                              })()
                         }
                         alt={`Problema - Imagem ${currentImageIndex + 1}`}
                         style={{
@@ -2863,10 +2789,14 @@ export default function MapCityMap() {
                           display: 'block'
                         }}
                         onError={(e) => {
-                          console.error('Erro ao carregar imagem:', e);
-                          e.target.style.display = 'none';
+                          if (!imageError) setImageError(true);
                         }}
                       />
+                      {imageError && (
+                        <div style={{textAlign: 'center', color: 'gray', marginTop: 8}}>
+                          Imagem indisponível
+                        </div>
+                      )}
                       
                       {/* Controles do Carrossel */}
                       {selectedMarker.images.length > 1 && (
@@ -3224,10 +3154,13 @@ export default function MapCityMap() {
                   </View>
                 )}
 
+                {/* Logs de depuração temporários */}
+                {console.log('DEBUG selectedMarker:', selectedMarker)}
+                {console.log('DEBUG usuario:', usuario)}
                 {/* Botões de Ação */}
                 <View style={{ gap: modernTheme.spacing.md }}>
                   {/* Botões para Usuários Comuns */}
-                  {usuario.tipo === 'usuario' && (
+                  {usuario && selectedMarker && usuario.tipo === 'usuario' && (
                     <>
                       {!selectedMarker.resolved && (
                         <TouchableOpacity
@@ -3255,7 +3188,6 @@ export default function MapCityMap() {
                           </Text>
                         </TouchableOpacity>
                       )}
-                      
                       <TouchableOpacity
                         style={{
                           backgroundColor: modernTheme.colors.warning,
@@ -3284,7 +3216,7 @@ export default function MapCityMap() {
                   )}
 
                   {/* Botões para Admin e ONGs */}
-                  {!selectedMarker.resolved && (usuario.tipo === 'admin' || usuario.tipo === 'ong') && (
+                  {selectedMarker && !selectedMarker.resolved && usuario && (usuario.tipo === 'admin' || usuario.tipo === 'ong') && (
                     <TouchableOpacity
                       style={{
                         backgroundColor: modernTheme.colors.success,
@@ -3311,7 +3243,7 @@ export default function MapCityMap() {
                     </TouchableOpacity>
                   )}
 
-                  {(usuario.tipo === 'admin' || usuario.tipo === 'ong') && (
+                  {selectedMarker && usuario && (usuario.tipo === 'admin' || usuario.tipo === 'ong') && (
                     <TouchableOpacity
                       style={{
                         backgroundColor: modernTheme.colors.danger,

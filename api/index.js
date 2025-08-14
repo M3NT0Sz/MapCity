@@ -146,14 +146,15 @@ export const lugaresAPI = {
   },
 
   // Denunciar lugar/marcador
-  denunciar: async (marcadorId, motivo, descricao) => {
+  denunciar: async (marcadorId, motivo, descricao, denuncianteId) => {
     try {
       const response = await apiRequest('/denuncias', {
         method: 'POST',
         body: JSON.stringify({
           marcador_id: marcadorId,
           motivo: motivo,
-          descricao: descricao
+          descricao: descricao,
+          denunciante_id: denuncianteId
         }),
       });
       

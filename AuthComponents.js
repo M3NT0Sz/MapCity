@@ -13,8 +13,12 @@ export function AuthProvider({ children }) {
   // Verificar token salvo ao inicializar
   useEffect(() => {
     const tokenSalvo = localStorage.getItem('mapcity_token');
-    if (tokenSalvo) {
-      verificarToken(tokenSalvo);
+    const usuarioSalvo = localStorage.getItem('mapcity_usuario');
+    if (tokenSalvo && usuarioSalvo) {
+      setToken(tokenSalvo);
+      setUsuario(JSON.parse(usuarioSalvo));
+      setCarregando(false);
+      // Opcional: verificarToken(tokenSalvo); // Se quiser validar token no backend
     } else {
       setCarregando(false);
     }
@@ -56,9 +60,10 @@ export function AuthProvider({ children }) {
       const data = await response.json();
 
       if (response.ok) {
-        setToken(data.token);
-        setUsuario(data.usuario);
-        localStorage.setItem('mapcity_token', data.token);
+  setToken(data.token);
+  setUsuario(data.usuario);
+  localStorage.setItem('mapcity_token', data.token);
+  localStorage.setItem('mapcity_usuario', JSON.stringify(data.usuario));
         return { sucesso: true, usuario: data.usuario };
       } else {
         return { sucesso: false, erro: data.error };
@@ -70,9 +75,10 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    setToken(null);
-    setUsuario(null);
-    localStorage.removeItem('mapcity_token');
+  setToken(null);
+  setUsuario(null);
+  localStorage.removeItem('mapcity_token');
+  localStorage.removeItem('mapcity_usuario');
   };
 
   const value = {

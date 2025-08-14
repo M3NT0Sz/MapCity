@@ -1,3 +1,15 @@
+// Função para updates (retorna o resultado completo)
+async function executarUpdate(sql, params = []) {
+    try {
+        const [result] = await pool.execute(sql, params);
+        return result;
+    } catch (error) {
+        console.error('❌ Erro no update:', error.message);
+        console.error('SQL:', sql);
+        console.error('Params:', params);
+        throw error;
+    }
+}
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
@@ -74,5 +86,6 @@ module.exports = {
     testarConexao,
     executarQuery,
     buscarUm,
-    inserir
+    inserir,
+    executarUpdate
 };
