@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   email VARCHAR(100) UNIQUE NOT NULL,
   senha VARCHAR(255) NOT NULL,
   tipo ENUM('usuario', 'ong', 'admin') DEFAULT 'usuario',
+  documento VARCHAR(20) UNIQUE, -- CPF ou CNPJ, obrigatório para usuario/ong
   ong_id INT NULL, -- Para usuários do tipo 'ong', referência à ONG
   ativo BOOLEAN DEFAULT TRUE,
   banido_em DATETIME NULL,
@@ -70,7 +71,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
   INDEX idx_tipo (tipo),
   INDEX idx_ativo (ativo),
   INDEX idx_ong_id (ong_id),
-  INDEX idx_banido_em (banido_em)
+  INDEX idx_banido_em (banido_em),
+  INDEX idx_documento (documento)
 );
 
 -- ============================================================================
