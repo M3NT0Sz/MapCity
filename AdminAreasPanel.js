@@ -22,75 +22,14 @@ const AdminAreasPanel = ({ visible, onClose, onAreaUpdate }) => {
   const carregarDados = async () => {
     setLoading(true);
     try {
-      
-      // Carregar pendentes primeiro (menos provável de falhar)
-      let pendentes = [];
-      let todas = [];
-      
-      try {
-        pendentes = await adminAreasAPI.buscarAreasPendentes();
-      } catch (error) {
-        console.error('❌ Erro ao carregar áreas pendentes:', error);
-        pendentes = [];
-      }
-      
-      // Carregar todas as áreas (pode falhar)
-      try {
-        todas = await adminAreasAPI.buscarTodasAreas();
-      } catch (error) {
-        console.error('❌ Erro ao carregar todas as áreas:', error);
-        // Usar apenas as áreas pendentes como fallback
-        todas = pendentes;
-        Alert.alert(
-          'Aviso', 
-          'Não foi possível carregar todas as áreas. Mostrando apenas áreas pendentes.',
-          [{ text: 'OK' }]
-        );
-      }
-      
-      setAreasPendentes(pendentes);
+      const todas = await adminAreasAPI.listarAreas();
       setTodasAreas(todas);
-      
+      setAreasPendentes(todas.filter(area => (area.status || '').toLowerCase().trim() === 'pendente'));
     } catch (error) {
-      console.error('❌ Erro crítico ao carregar dados:', error);
-      Alert.alert('Erro', 'Não foi possível carregar as áreas. Verifique sua conexão.');
-      // Definir arrays vazios em caso de erro total
-      setAreasPendentes([]);
-      setTodasAreas([]);
+      Alert.alert('Erro', 'Erro ao carregar áreas: ' + error.message);
     } finally {
       setLoading(false);
     }
-  };
-
-  const aprovarArea = async (areaId) => {
-    // Encontrar a área para mostrar no modal
-    const area = areasPendentes.find(a => a.id === areaId);
-    setAreaParaAprovar(area);
-  };
-
-  const confirmarAprovacao = async () => {
-    if (!areaParaAprovar) return;
-    try {
-      setLoading(true);
-      console.log('📤 AdminPanel: Chamando API para aprovar área:', areaParaAprovar.id);
-      const result = await adminAreasAPI.aprovarArea(areaParaAprovar.id);
-      Alert.alert('Sucesso', 'Área aprovada com sucesso!');
-      setAreaParaAprovar(null);
-      await carregarDados();
-      onAreaUpdate?.();
-    } catch (error) {
-      console.error('❌ AdminPanel: Erro ao aprovar área:', error);
-      Alert.alert('Erro', error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const iniciarRejeicao = (area) => {
-    setAreaParaRejeitar(area);
-    setMotivoRejeicao('');
-  };
-
   const confirmarRejeicao = async () => {
     if (!motivoRejeicao.trim()) {
       Alert.alert('Erro', 'Por favor, informe o motivo da rejeição');
@@ -266,272 +205,187 @@ const AdminAreasPanel = ({ visible, onClose, onAreaUpdate }) => {
   }
 
   return (
-    <>
-      <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-        <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
-          {/* Header */}
-          <View style={{
-            backgroundColor: 'white',
-            paddingTop: 60,
-            paddingBottom: 20,
-            paddingHorizontal: 20,
-            borderBottomWidth: 1,
-            borderBottomColor: '#E5E7EB'
-          }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#1F2937' }}>
-                Painel de Áreas
-              </Text>
-              <TouchableOpacity
-                onPress={onClose}
-                style={{
-                  backgroundColor: '#F3F4F6',
-                  padding: 8,
-                  borderRadius: 20
-                }}
-              >
-                <Text style={{ fontSize: 18, color: '#6B7280' }}>✕</Text>
-              </TouchableOpacity>
-            </View>
-            
-            {/* Tabs */}
-            <View style={{ flexDirection: 'row', marginTop: 20 }}>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  paddingVertical: 12,
-                  backgroundColor: activeTab === 'pendentes' ? '#3B82F6' : '#F3F4F6',
-                  borderRadius: 8,
-                  marginRight: 8
-                }}
-                onPress={() => setActiveTab('pendentes')}
-              >
-                <Text style={{
-                  textAlign: 'center',
-                  color: activeTab === 'pendentes' ? 'white' : '#6B7280',
-                  fontWeight: '600'
-                }}>
-                  Pendentes ({areasPendentes.length})
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  paddingVertical: 12,
-                  backgroundColor: activeTab === 'todas' ? '#3B82F6' : '#F3F4F6',
-                  borderRadius: 8,
-                  marginLeft: 8
-                }}
-                onPress={() => setActiveTab('todas')}
-              >
-                <Text style={{
-                  textAlign: 'center',
-                  color: activeTab === 'todas' ? 'white' : '#6B7280',
-                  fontWeight: '600'
-                }}>
-                  Todas ({todasAreas.length})
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Content */}
-          <ScrollView style={{ flex: 1 }}>
-            {loading ? (
-              <View style={{ padding: 20, alignItems: 'center' }}>
-                <Text style={{ color: '#6B7280' }}>Carregando...</Text>
-              </View>
-            ) : (
-              <>
-                {activeTab === 'pendentes' ? (
-                  areasPendentes.length === 0 ? (
-                    <View style={{ padding: 20, alignItems: 'center' }}>
-                      <Text style={{ color: '#6B7280', fontSize: 16 }}>
-                        Nenhuma área pendente de aprovação
-                      </Text>
-                    </View>
-                  ) : (
-                    areasPendentes.map(area => renderAreaCard(area, true))
-                  )
-                ) : (
-                  todasAreas.length === 0 ? (
-                    <View style={{ padding: 20, alignItems: 'center' }}>
-                      <Text style={{ color: '#6B7280', fontSize: 16 }}>
-                        Nenhuma área cadastrada
-                      </Text>
-                    </View>
-                  ) : (
-                    todasAreas.map(area => renderAreaCard(area, false))
-                  )
-                )}
-              </>
-            )}
-          </ScrollView>
-        </View>
-      </Modal>
-
-      {/* Modal de Aprovação */}
-      <Modal 
-        visible={!!areaParaAprovar} 
-        animationType="fade" 
-        transparent={true}
-      >
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+      <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+        {/* Header */}
         <View style={{
-          flex: 1,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          justifyContent: 'center',
-          alignItems: 'center'
+          backgroundColor: 'white',
+          paddingTop: 60,
+          paddingBottom: 20,
+          paddingHorizontal: 20,
+          borderBottomWidth: 1,
+          borderBottomColor: '#E5E7EB'
         }}>
-          <View style={{
-            backgroundColor: 'white',
-            margin: 20,
-            padding: 20,
-            borderRadius: 12,
-            width: '90%',
-            maxWidth: 400
-          }}>
-            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 15, color: '#10B981' }}>
-              ✅ Confirmar Aprovação
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#1F2937' }}>
+              Painel de Áreas
             </Text>
-            
-            <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 10 }}>
-              Tem certeza que deseja aprovar a área:
-            </Text>
-            
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#1F2937', marginBottom: 20 }}>
-              "{areaParaAprovar?.nome}"
-            </Text>
-            
-            <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 20 }}>
-              Esta ação irá ativar a área de responsabilidade da ONG {areaParaAprovar?.ong_nome}.
-            </Text>
-            
-            <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
-              <TouchableOpacity
-                style={{
-                  backgroundColor: '#F3F4F6',
-                  paddingHorizontal: 16,
-                  paddingVertical: 8,
-                  borderRadius: 8,
-                  marginRight: 10
-                }}
-                onPress={() => {
-                  setAreaParaAprovar(null);
-                }}
-                disabled={loading}
-              >
-                <Text style={{ color: '#6B7280', fontWeight: '600' }}>Cancelar</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={{
-                  backgroundColor: '#10B981',
-                  paddingHorizontal: 16,
-                  paddingVertical: 8,
-                  borderRadius: 8,
-                  opacity: loading ? 0.5 : 1
-                }}
-                onPress={confirmarAprovacao}
-                disabled={loading}
-              >
-                <Text style={{ 
-                  color: 'white', 
-                  fontWeight: '600'
-                }}>
-                  {loading ? 'Aprovando...' : 'Aprovar'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Modal de Rejeição */}
-      <Modal 
-        visible={!!areaParaRejeitar} 
-        animationType="fade" 
-        transparent={true}
-      >
-        <View style={{
-          flex: 1,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          justifyContent: 'center',
-          alignItems: 'center'
-        }}>
-          <View style={{
-            backgroundColor: 'white',
-            margin: 20,
-            padding: 20,
-            borderRadius: 12,
-            width: '90%',
-            maxWidth: 400
-          }}>
-            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 15 }}>
-              Rejeitar Área: {areaParaRejeitar?.nome}
-            </Text>
-            
-            <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 10 }}>
-              Por favor, informe o motivo da rejeição:
-            </Text>
-            
-            <TextInput
+            <TouchableOpacity
+              onPress={onClose}
               style={{
-                borderWidth: 1,
-                borderColor: '#D1D5DB',
-                borderRadius: 8,
-                padding: 12,
-                minHeight: 80,
-                textAlignVertical: 'top',
-                marginBottom: 20
+                backgroundColor: '#F3F4F6',
+                padding: 8,
+                borderRadius: 20
               }}
-              multiline
-              placeholder="Digite o motivo da rejeição..."
-              value={motivoRejeicao}
-              onChangeText={setMotivoRejeicao}
-            />
-            
-            <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
-              <TouchableOpacity
-                style={{
-                  backgroundColor: '#F3F4F6',
-                  paddingHorizontal: 16,
-                  paddingVertical: 8,
-                  borderRadius: 8,
-                  marginRight: 10
-                }}
-                onPress={() => {
-                  setAreaParaRejeitar(null);
-                  setMotivoRejeicao('');
-                }}
-              >
-                <Text style={{ color: '#6B7280', fontWeight: '600' }}>Cancelar</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={{
-                  backgroundColor: '#EF4444',
-                  paddingHorizontal: 16,
-                  paddingVertical: 8,
-                  borderRadius: 8
-                }}
-                onPress={confirmarRejeicao}
-                disabled={loading || !motivoRejeicao.trim()}
-              >
-                <Text style={{ 
-                  color: 'white', 
-                  fontWeight: '600',
-                  opacity: (!motivoRejeicao.trim() || loading) ? 0.5 : 1
-                }}>
-                  Rejeitar
-                </Text>
-              </TouchableOpacity>
-            </View>
+            >
+              <Text style={{ fontSize: 18, color: '#6B7280' }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          {/* Tabs */}
+          <View style={{ flexDirection: 'row', marginTop: 20 }}>
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                paddingVertical: 12,
+                backgroundColor: activeTab === 'pendentes' ? '#3B82F6' : '#F3F4F6',
+                borderRadius: 8,
+                marginRight: 8
+              }}
+              onPress={() => setActiveTab('pendentes')}
+            >
+              <Text style={{
+                textAlign: 'center',
+                color: activeTab === 'pendentes' ? 'white' : '#6B7280',
+                fontWeight: '600'
+              }}>
+                Pendentes ({areasPendentes.length})
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                paddingVertical: 12,
+                backgroundColor: activeTab === 'todas' ? '#3B82F6' : '#F3F4F6',
+                borderRadius: 8,
+                marginLeft: 8
+              }}
+              onPress={() => setActiveTab('todas')}
+            >
+              <Text style={{
+                textAlign: 'center',
+                color: activeTab === 'todas' ? 'white' : '#6B7280',
+                fontWeight: '600'
+              }}>
+                Todas ({todasAreas.length})
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
-      </Modal>
-    </>
+        {/* Content */}
+        <ScrollView style={{ flex: 1 }}>
+          {loading ? (
+            <View style={{ padding: 20, alignItems: 'center' }}>
+              <Text style={{ color: '#6B7280' }}>Carregando...</Text>
+            </View>
+          ) : (
+            <>
+              {activeTab === 'pendentes' ? (
+                areasPendentes.length === 0 ? (
+                  <View style={{ padding: 20, alignItems: 'center' }}>
+                    <Text style={{ color: '#6B7280', fontSize: 16 }}>
+                      Nenhuma área pendente de aprovação
+                    </Text>
+                  </View>
+                ) : (
+                  areasPendentes.map(area => renderAreaCard(area, true))
+                )
+              ) : (
+                todasAreas.length === 0 ? (
+                  <View style={{ padding: 20, alignItems: 'center' }}>
+                    <Text style={{ color: '#6B7280', fontSize: 16 }}>
+                      Nenhuma área cadastrada
+                    </Text>
+                  </View>
+                ) : (
+                  todasAreas.map(area => renderAreaCard(area, false))
+                )
+              )}
+            </>
+          )}
+        </ScrollView>
+        {/* Modal de Rejeição */}
+        <Modal 
+          visible={!!areaParaRejeitar} 
+          animationType="fade" 
+          transparent={true}
+        >
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}>
+            <View style={{
+              backgroundColor: 'white',
+              margin: 20,
+              padding: 20,
+              borderRadius: 12,
+              width: '90%',
+              maxWidth: 400
+            }}>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 15 }}>
+                Rejeitar Área: {areaParaRejeitar?.nome}
+              </Text>
+              <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 10 }}>
+                Por favor, informe o motivo da rejeição:
+              </Text>
+              <TextInput
+                style={{
+                  borderWidth: 1,
+                  borderColor: '#D1D5DB',
+                  borderRadius: 8,
+                  padding: 12,
+                  minHeight: 80,
+                  textAlignVertical: 'top',
+                  marginBottom: 20
+                }}
+                multiline
+                placeholder="Digite o motivo da rejeição..."
+                value={motivoRejeicao}
+                onChangeText={setMotivoRejeicao}
+              />
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#F3F4F6',
+                    paddingHorizontal: 16,
+                    paddingVertical: 8,
+                    borderRadius: 8,
+                    marginRight: 10
+                  }}
+                  onPress={() => {
+                    setAreaParaRejeitar(null);
+                    setMotivoRejeicao('');
+                  }}
+                >
+                  <Text style={{ color: '#6B7280', fontWeight: '600' }}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#EF4444',
+                    paddingHorizontal: 16,
+                    paddingVertical: 8,
+                    borderRadius: 8
+                  }}
+                  onPress={confirmarRejeicao}
+                  disabled={loading || !motivoRejeicao.trim()}
+                >
+                  <Text style={{ 
+                    color: 'white', 
+                    fontWeight: '600',
+                    opacity: (!motivoRejeicao.trim() || loading) ? 0.5 : 1
+                  }}>
+                    Rejeitar
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      </View>
+    </Modal>
   );
 };
 
+}
 export default AdminAreasPanel;

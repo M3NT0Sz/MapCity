@@ -8,6 +8,140 @@ app.use(cors());
 app.use(express.json());
 const multer = require('multer');
 const path = require('path');
+// Middleware para autenticação de ONG ou admin (token_simulado_ID)
+async function autenticarONGouAdmin(req, res, next) {
+    const auth = req.headers['authorization'];
+    if (!auth || !auth.startsWith('Bearer token_simulado_')) {
+        return res.status(401).json({ error: 'Não autenticado' });
+    }
+    // Extrai o ID do token simulado: token_simulado_123456789
+    const token = auth.replace('Bearer ', '').trim();
+    const partes = token.split('_');
+    const usuarioId = Number(partes[2]);
+    if (!usuarioId) {
+        return res.status(401).json({ error: 'Token inválido' });
+    }
+    req.usuarioId = usuarioId;
+    try {
+        const usuario = await db.buscarUm('SELECT * FROM usuarios WHERE id = ?', [usuarioId]);
+        req.isAdmin = usuario && usuario.tipo === 'admin';
+    } catch (e) {
+        req.isAdmin = false;
+    }
+    next();
+}
+
+// DELETE /areas/:id - excluir área de responsabilidade (ONG ou admin)
+app.delete('/areas/:id', autenticarONGouAdmin, async (req, res) => {
+    console.log('[DELETE /areas/:id] chamada recebida', {
+        params: req.params,
+        headers: req.headers
+    });
+    const { id } = req.params;
+    try {
+        // Verifica se a área existe
+        const area = await db.buscarUm('SELECT * FROM areas_responsabilidade WHERE id = ?', [id]);
+        if (!area) {
+            console.error(`[EXCLUIR ÁREA] Área não encontrada. ID: ${id}`);
+            return res.status(404).json({ error: 'Área não encontrada' });
+        }
+        // Se não for admin, verifica se a área pertence à ONG autenticada
+        if (!req.isAdmin && area.ong_id != req.usuarioId) {
+            console.error(`[EXCLUIR ÁREA] ONG não autorizada. ONG da área: ${area.ong_id}, Usuário autenticado: ${req.usuarioId}`);
+            return res.status(403).json({ error: 'Você só pode excluir áreas da sua própria ONG.' });
+        }
+        // Log detalhado para depuração
+        console.log(`[EXCLUIR ÁREA] Tentando excluir área:`, area);
+        // Permitir exclusão apenas se status for pendente ou aprovada
+        if (area.status !== 'pendente' && area.status !== 'aprovada') {
+            console.error(`[EXCLUIR ÁREA] Status inválido para exclusão. Status: ${area.status}, ID: ${id}`);
+            return res.status(400).json({ error: 'Só é possível excluir áreas pendentes ou aprovadas.' });
+        }
+        await db.executarUpdate('DELETE FROM areas_responsabilidade WHERE id = ?', [id]);
+        console.log(`[EXCLUIR ÁREA] Área excluída com sucesso. ID: ${id}`);
+        res.json({ success: true, id });
+    } catch (error) {
+        console.error(`[EXCLUIR ÁREA] Erro ao excluir área. ID: ${id}`, error);
+        res.status(500).json({ error: 'Erro ao excluir área', details: error.message });
+    }
+});
+
+// PUT /denuncias/:id/aceitar - aceita uma denúncia
+app.put('/denuncias/:id/aceitar', async (req, res) => {
+    const { id } = req.params;
+    const { observacoes } = req.body;
+    try {
+        // Atualiza status da denúncia
+        const result = await db.executarUpdate(
+            "UPDATE denuncias SET status = 'aceita', observacoes = ? , processado_em = NOW() WHERE id = ?",
+            [observacoes || null, id]
+        );
+        if (result.affectedRows > 0) {
+            // Buscar denúncia para pegar o marcador_id
+            const denuncia = await db.buscarUm('SELECT marcador_id FROM denuncias WHERE id = ?', [id]);
+            if (denuncia && denuncia.marcador_id) {
+                // Deletar o marcador denunciado
+                await db.executarUpdate('DELETE FROM lugares WHERE id = ?', [denuncia.marcador_id]);
+            }
+            res.json({ success: true, id });
+        } else {
+            res.status(404).json({ error: 'Denúncia não encontrada' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao aceitar denúncia', details: error.message });
+    }
+});
+
+// PUT /denuncias/:id/rejeitar - rejeita uma denúncia
+app.put('/denuncias/:id/rejeitar', async (req, res) => {
+    const { id } = req.params;
+    const { observacoes } = req.body;
+    try {
+        const result = await db.executarUpdate(
+            "UPDATE denuncias SET status = 'rejeitada', observacoes = ? , processado_em = NOW() WHERE id = ?",
+            [observacoes || null, id]
+        );
+        if (result.affectedRows > 0) {
+            res.json({ success: true, id });
+        } else {
+            res.status(404).json({ error: 'Denúncia não encontrada' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao rejeitar denúncia', details: error.message });
+    }
+});
+
+// GET /denuncias - listar denúncias (admin/ong)
+app.get('/denuncias', async (req, res) => {
+    try {
+        // Para ONGs, filtrar por ong_responsavel_id se usuário for ONG
+        let denuncias;
+        if (req.query.ong_id) {
+            denuncias = await db.executarQuery('SELECT * FROM denuncias WHERE ong_responsavel_id = ?', [req.query.ong_id]);
+        } else {
+            denuncias = await db.executarQuery('SELECT * FROM denuncias');
+        }
+        res.json(denuncias);
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao buscar denúncias', details: error.message });
+    }
+});
+
+// PUT /notificacoes/:id/lida - marcar notificação como lida
+app.put('/notificacoes/:id/lida', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await db.executarUpdate('UPDATE notificacoes_ong SET lida = 1 WHERE id = ?', [id]);
+        if (result.affectedRows > 0) {
+            res.json({ success: true, id });
+        } else {
+            res.status(404).json({ error: 'Notificação não encontrada' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao marcar notificação como lida', details: error.message });
+    }
+});
+
 // GET /notificacoes - retorna todas as notificações das ONGs
 // GET /notificacoes - retorna notificações das ONGs, pode filtrar por ong_id
 app.get('/notificacoes', async (req, res) => {
@@ -19,6 +153,18 @@ app.get('/notificacoes', async (req, res) => {
         } else {
             notificacoes = await db.executarQuery('SELECT * FROM notificacoes_ong');
         }
+                // Converter criada_em para ISO string, mesmo se vier como string
+                notificacoes = notificacoes.map(n => {
+                    let criadaEmISO = n.criada_em;
+                    if (n.criada_em) {
+                        const d = new Date(n.criada_em);
+                        criadaEmISO = isNaN(d.getTime()) ? n.criada_em : d.toISOString();
+                    }
+                    return {
+                        ...n,
+                        criada_em: criadaEmISO
+                    };
+                });
         res.json(notificacoes);
     } catch (error) {
         res.status(500).json({ error: 'Erro ao buscar notificações', details: error.message });
@@ -57,7 +203,7 @@ app.get('/admin/areas/pendentes', async (req, res) => {
 app.get('/admin/areas', async (req, res) => {
     try {
         const areas = await db.executarQuery('SELECT * FROM areas_responsabilidade');
-        res.json(areas);
+        res.json({ areas });
     } catch (error) {
         res.status(500).json({ error: 'Erro ao buscar todas as áreas', details: error.message });
     }
@@ -66,8 +212,12 @@ app.get('/admin/areas', async (req, res) => {
 // GET /areas - retorna todas as áreas cadastradas
 app.get('/areas', async (req, res) => {
     try {
-        // No futuro: filtrar por ong_id do usuário autenticado
-        const areas = await db.executarQuery('SELECT * FROM areas_responsabilidade');
+        let areas;
+        if (req.query.ong_id) {
+            areas = await db.executarQuery('SELECT * FROM areas_responsabilidade WHERE ong_id = ?', [req.query.ong_id]);
+        } else {
+            areas = await db.executarQuery('SELECT * FROM areas_responsabilidade');
+        }
         res.json(areas);
     } catch (error) {
         res.status(500).json({ error: 'Erro ao buscar áreas', details: error.message });
@@ -100,6 +250,24 @@ app.delete('/lugares/:id', async (req, res) => {
         const marcador = await db.buscarUm('SELECT * FROM lugares WHERE id = ?', [id]);
         if (!marcador) {
             return res.status(404).json({ error: 'Marcador não encontrado' });
+        }
+        // Remover imagens associadas
+        if (marcador.imagem) {
+            let imagens = [];
+            try {
+                imagens = JSON.parse(marcador.imagem);
+            } catch (e) {
+                if (typeof marcador.imagem === 'string') imagens = [marcador.imagem];
+            }
+            const fs = require('fs');
+            imagens.forEach(imgPath => {
+                if (typeof imgPath === 'string' && imgPath.startsWith('/uploads/')) {
+                    const absPath = path.join(__dirname, imgPath);
+                    fs.unlink(absPath, err => {
+                        if (err) console.error('Erro ao remover imagem:', absPath, err.message);
+                    });
+                }
+            });
         }
         // Deleta o marcador
         await db.executarUpdate('DELETE FROM lugares WHERE id = ?', [id]);
@@ -149,26 +317,80 @@ app.post('/lugares', async (req, res) => {
             return res.status(400).json({ error: 'Campos obrigatórios: nome, tipo, latitude, longitude' });
         }
 
-
         // Garantir que imagem seja array de strings (caminhos)
         let imagensArray = null;
         if (Array.isArray(imagem)) {
-            // Se for array de objetos, extrair o campo 'path', senão usar como está
             imagensArray = imagem.map(img => typeof img === 'object' && img.path ? img.path : img).filter(Boolean);
         } else if (typeof imagem === 'string') {
             imagensArray = [imagem];
         }
         let imagemStr = imagensArray && imagensArray.length > 0 ? JSON.stringify(imagensArray) : null;
 
-        // Inserir marcador (apenas campos existentes na tabela)
+        // Inserir marcador
         const sql = `INSERT INTO lugares (nome, descricao, tipo, latitude, longitude, imagem, criado_em)
                      VALUES (?, ?, ?, ?, ?, ?, NOW())`;
         const params = [nome, descricao || null, tipo, latitude, longitude, imagemStr];
         const id = await db.inserir(sql, params);
 
+        // Buscar áreas aprovadas que contenham o ponto (latitude, longitude)
+        const areas = await db.executarQuery("SELECT * FROM areas_responsabilidade WHERE status = 'aprovada'");
+        let areaEncontrada = null;
+        for (const area of areas) {
+            try {
+                const coords = JSON.parse(area.coordenadas);
+                if (Array.isArray(coords) && coords.length >= 3) {
+                    // Função de ponto no polígono
+                    const pontoNoPoligono = (lat, lng, poligono) => {
+                        let dentro = false;
+                        for (let i = 0, j = poligono.length - 1; i < poligono.length; j = i++) {
+                            const xi = parseFloat(poligono[i].lat), yi = parseFloat(poligono[i].lng);
+                            const xj = parseFloat(poligono[j].lat), yj = parseFloat(poligono[j].lng);
+                            const intersect = ((yi > lng) !== (yj > lng)) &&
+                                (lat < (xj - xi) * (lng - yi) / (yj - yi + 0.0000001) + xi);
+                            if (intersect) dentro = !dentro;
+                        }
+                        return dentro;
+                    };
+                    if (pontoNoPoligono(Number(latitude), Number(longitude), coords)) {
+                        areaEncontrada = area;
+                        break;
+                    }
+                }
+            } catch (e) { /* ignora erro de parse */ }
+        }
+
+
+        if (areaEncontrada) {
+            // Log temporário para depuração
+            console.log('[NOTIFICAÇÃO] Tentando inserir notificação:', {
+                ong_id: areaEncontrada.ong_id,
+                area_id: areaEncontrada.id,
+                lugar_id: id,
+                tipo: 'novo_marcador',
+                titulo: 'Novo marcador na sua área',
+                mensagem: `Um novo marcador foi criado dentro da área "${areaEncontrada.nome}".`
+            });
+            try {
+                await db.inserir(
+                    `INSERT INTO notificacoes_ong (ong_id, area_id, lugar_id, tipo, titulo, mensagem) VALUES (?, ?, ?, ?, ?, ?)`,
+                    [
+                        areaEncontrada.ong_id,
+                        areaEncontrada.id,
+                        id,
+                        'novo_marcador',
+                        'Novo marcador na sua área',
+                        `Um novo marcador foi criado dentro da área "${areaEncontrada.nome}".`
+                    ]
+                );
+            } catch (notErr) {
+                console.error('[NOTIFICAÇÃO] Erro ao inserir notificação:', notErr.message);
+                res.status(500).json({ error: 'Erro ao criar notificação', details: notErr.message });
+                return;
+            }
+        }
+
         res.status(201).json({ success: true, id });
     } catch (error) {
-    // Erro ao criar marcador
         res.status(500).json({ error: 'Erro ao criar lugar', details: error.message });
     }
 });
@@ -426,7 +648,7 @@ app.post('/auth/login', async (req, res) => {
             success: true,
             message: 'Login realizado com sucesso!',
             usuario: usuarioRetorno,
-            token: 'token_simulado_' + Date.now()
+            token: 'token_simulado_' + usuario.id
         });
     } catch (error) {
     // Erro no login

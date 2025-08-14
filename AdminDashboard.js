@@ -19,7 +19,24 @@ import { adminAPI, denunciasAPI, lugaresAPI, areasAPI } from './api';
 
 const { width, height } = Dimensions.get('window');
 
-const AdminDashboard = ({ visible, onClose }) => {
+const AdminDashboard = ({ visible, onClose, onSelectMarcador }) => {
+  // ...existing code...
+  const [areasPendentes, setAreasPendentes] = useState([]);
+  const [todasAreas, setTodasAreas] = useState([]);
+  // Debug: mostrar todos os status das áreas carregadas
+  useEffect(() => {
+    if (todasAreas && todasAreas.length > 0) {
+      console.log('DEBUG status das áreas:', todasAreas.map(a => a.status));
+    }
+  }, [todasAreas]);
+  // Força logout e limpeza do token antigo ao abrir o painel
+  useEffect(() => {
+    const token = localStorage.getItem('mapcity_token');
+    if (token && !/^token_simulado_\d+$/.test(token)) {
+      localStorage.removeItem('mapcity_token');
+      window.location.reload();
+    }
+  }, []);
   const { usuario } = useAuth();
   const [activeTab, setActiveTab] = useState('denuncias');
   const [loading, setLoading] = useState(false);
@@ -30,9 +47,6 @@ const AdminDashboard = ({ visible, onClose }) => {
   const [denunciaSelected, setDenunciaSelected] = useState(null);
   const [observacoes, setObservacoes] = useState('');
   
-  // Estados para áreas
-  const [areasPendentes, setAreasPendentes] = useState([]);
-  const [todasAreas, setTodasAreas] = useState([]);
   const [areaSelected, setAreaSelected] = useState(null);
   const [motivoRejeicao, setMotivoRejeicao] = useState('');
   
@@ -77,20 +91,80 @@ const AdminDashboard = ({ visible, onClose }) => {
   const carregarAreas = async () => {
     try {
       if (usuario.tipo === 'admin') {
-        const [pendentes, todas] = await Promise.all([
-          adminAPI.buscarAreasPendentes(),
-          adminAPI.buscarTodasAreas()
-        ]);
-        setAreasPendentes(pendentes.areas || []);
+        const todas = await adminAPI.buscarTodasAreas();
         setTodasAreas(todas.areas || []);
+        setAreasPendentes((todas.areas || []).filter(area =>
+          (area.status || '').toLowerCase().replace(/\s/g, '').includes('pendente')
+        ));
       } else if (usuario.tipo === 'ong') {
-        const areas = await areasAPI.buscarAreas();
-        setTodasAreas(areas.areas || []);
-        setAreasPendentes(areas.areas?.filter(area => area.status === 'pendente') || []);
+        const areas = await areasAPI.buscarAreas(usuario.id);
+        setTodasAreas(Array.isArray(areas) ? areas : (areas.areas || []));
+        setAreasPendentes((Array.isArray(areas) ? areas : (areas.areas || [])).filter(area => area.status === 'pendente'));
       }
     } catch (error) {
       console.error('Erro ao carregar áreas:', error);
     }
+  };
+  // Renderizar lista de áreas de responsabilidade para ONG
+  const renderAreasONG = () => {
+    if (usuario.tipo !== 'ong') return null;
+    return (
+      <ScrollView style={styles.tabContent}>
+        <Text style={styles.sectionTitle}>Áreas de Responsabilidade ({todasAreas.length})</Text>
+        {todasAreas.length === 0 ? (
+          <Text style={{ color: '#888', fontSize: 16, textAlign: 'center' }}>Nenhuma área cadastrada.</Text>
+        ) : (
+          todasAreas.map(area => (
+            <View key={area.id} style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle}>{area.nome}</Text>
+                <View style={[
+                  styles.badge,
+                  area.status === 'aprovada' ? styles.badgeSuccess : styles.badgeWarning
+                ]}>
+                  <Text style={styles.badgeText}>
+                    {area.status === 'aprovada' ? 'Aprovada' : area.status.charAt(0).toUpperCase() + area.status.slice(1)}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.cardText}>Descrição: {area.descricao || 'Sem descrição.'}</Text>
+              <Text style={styles.cardText}>Criada em: {new Date(area.criada_em).toLocaleDateString()}</Text>
+              <View style={styles.cardActions}>
+                <TouchableOpacity
+                  style={[styles.button, styles.buttonDanger]}
+                  onPress={async () => {
+                    console.log('Excluir área (ONG):', area.id);
+                    try {
+                      console.log('[areasAPI.excluirArea] Iniciando fetch DELETE', `http://localhost:3001/areas/${area.id}`);
+                      const response = await fetch(`http://localhost:3001/areas/${area.id}`, {
+                        method: 'DELETE',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${localStorage.getItem('mapcity_token')}`
+                        }
+                      });
+                      console.log('[areasAPI.excluirArea] Resposta recebida', response);
+                      const result = await response.json();
+                      console.log('[areasAPI.excluirArea] Resultado do fetch', result);
+                      if (response.ok) {
+                        alert('Área excluída com sucesso');
+                      } else {
+                        alert('Erro ao excluir área: ' + (result.error || response.statusText));
+                      }
+                    } catch (error) {
+                      console.error('Erro ao excluir área:', error);
+                      alert('Erro ao excluir área: ' + error.message);
+                    }
+                  }}
+                >
+                  <Text style={styles.buttonText}>Excluir</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))
+        )}
+      </ScrollView>
+    );
   };
 
   const carregarMarcadores = async () => {
@@ -219,56 +293,40 @@ const AdminDashboard = ({ visible, onClose }) => {
   };
 
   const excluirArea = async (areaId) => {
-    Alert.alert(
-      'Confirmar Exclusão',
-      'Tem certeza que deseja excluir esta área? Esta ação não pode ser desfeita.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setLoading(true);
-              await adminAPI.excluirArea(areaId);
-              Alert.alert('Sucesso', 'Área excluída com sucesso');
-              await carregarAreas();
-            } catch (error) {
-              Alert.alert('Erro', error.message);
-            } finally {
-              setLoading(false);
-            }
-          }
-        }
-      ]
-    );
+    let confirmar = true;
+    // Se estiver rodando no navegador, usar window.confirm
+    if (typeof window !== 'undefined' && window.confirm) {
+      confirmar = window.confirm('Tem certeza que deseja excluir esta área? Esta ação não pode ser desfeita.');
+    }
+    if (!confirmar) return;
+    try {
+      setLoading(true);
+  await areasAPI.excluirArea(areaId);
+  await carregarAreas();
+  window.location.reload();
+    } catch (error) {
+      let msg = error && error.message ? error.message : 'Erro desconhecido';
+      // Loga o erro completo para depuração
+  console.error('Erro ao excluir área:', error);
+  alert('Erro ao excluir área: ' + msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Funções para marcadores
   const excluirMarcador = async (marcadorId) => {
-    Alert.alert(
-      'Confirmar Exclusão',
-      'Tem certeza que deseja excluir este marcador? Esta ação não pode ser desfeita.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setLoading(true);
-              await lugaresAPI.deletar(marcadorId);
-              Alert.alert('Sucesso', 'Marcador excluído com sucesso');
-              await carregarMarcadores();
-            } catch (error) {
-              Alert.alert('Erro', error.message);
-            } finally {
-              setLoading(false);
-            }
-          }
-        }
-      ]
-    );
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('mapcity_token');
+      await lugaresAPI.deletar(marcadorId, token);
+      window.location.reload();
+    } catch (error) {
+      console.error("Erro ao excluir marcador:", error);
+      alert("Erro ao excluir marcador: " + (error.message || error));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const marcarComoResolvido = async (marcadorId, resolvido) => {
@@ -277,6 +335,7 @@ const AdminDashboard = ({ visible, onClose }) => {
       await lugaresAPI.resolver(marcadorId, resolvido);
       Alert.alert('Sucesso', `Marcador ${resolvido ? 'resolvido' : 'reaberto'} com sucesso`);
       await carregarMarcadores();
+      window.location.reload();
     } catch (error) {
       Alert.alert('Erro', error.message);
     } finally {
@@ -550,21 +609,23 @@ const AdminDashboard = ({ visible, onClose }) => {
                   <Text style={styles.badgeText}>Pendente</Text>
                 </View>
               </View>
-              
               <Text style={styles.cardText}>ONG: {area.ong_nome}</Text>
               <Text style={styles.cardText}>Descrição: {area.descricao}</Text>
               <Text style={styles.cardText}>
                 Criada em: {new Date(area.criada_em).toLocaleDateString()}
               </Text>
-              
               <View style={styles.cardActions}>
-                <TouchableOpacity 
-                  style={[styles.button, styles.buttonSuccess]}
-                  onPress={() => aprovarArea(area.id)}
-                >
-                  <Text style={styles.buttonText}>Aprovar</Text>
-                </TouchableOpacity>
-                
+                {area.status === 'pendente' && (
+                  <TouchableOpacity 
+                    style={[styles.button, styles.buttonSuccess]}
+                    onPress={async () => {
+                      await aprovarArea(area.id);
+                      await carregarAreas();
+                    }}
+                  >
+                    <Text style={styles.buttonText}>Aprovar</Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity 
                   style={[styles.button, styles.buttonDanger]}
                   onPress={() => setAreaSelected(area)}
@@ -578,51 +639,50 @@ const AdminDashboard = ({ visible, onClose }) => {
       )}
       
       <Text style={styles.sectionTitle}>
-        Todas as Áreas ({todasAreas.length})
+        Todas as Áreas ({todasAreas.filter(area => (area.status || '').toLowerCase().replace(/\s/g, '') !== 'pendente').length})
       </Text>
-      
-      {todasAreas.map(area => (
-        <View key={area.id} style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>{area.nome}</Text>
-            <View style={[
-              styles.badge, 
-              area.status === 'aprovada' ? styles.badgeSuccess : 
-              area.status === 'rejeitada' ? styles.badgeDanger : styles.badgePending
-            ]}>
-              <Text style={styles.badgeText}>
-                {area.status === 'aprovada' ? 'Aprovada' : 
-                 area.status === 'rejeitada' ? 'Rejeitada' : 'Pendente'}
-              </Text>
-            </View>
-          </View>
-          
-          <Text style={styles.cardText}>ONG: {area.ong_nome}</Text>
-          <Text style={styles.cardText}>Descrição: {area.descricao}</Text>
-          
-          {area.status === 'rejeitada' && area.motivo_rejeicao && (
-            <Text style={styles.cardTextDanger}>
-              Motivo da rejeição: {area.motivo_rejeicao}
-            </Text>
-          )}
-          
-          {(usuario.tipo === 'admin' || (usuario.tipo === 'ong' && area.ong_id === usuario.id)) && (
-            <View style={styles.cardActions}>
-              <TouchableOpacity 
-                style={[styles.button, styles.buttonDanger]}
-                onPress={() => excluirArea(area.id)}
-              >
-                <Text style={styles.buttonText}>Excluir</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      ))}
-      
-      {todasAreas.length === 0 && (
+
+      {todasAreas.filter(area => (area.status || '').toLowerCase().replace(/\s/g, '') !== 'pendente').length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>Nenhuma área encontrada</Text>
         </View>
+      ) : (
+        todasAreas
+          .filter(area => (area.status || '').toLowerCase().replace(/\s/g, '') !== 'pendente')
+          .map(area => (
+            <View key={area.id} style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle}>{area.nome}</Text>
+                <View style={[
+                  styles.badge, 
+                  area.status === 'aprovada' ? styles.badgeSuccess : 
+                  area.status === 'rejeitada' ? styles.badgeDanger : styles.badgePending
+                ]}>
+                  <Text style={styles.badgeText}>
+                    {area.status === 'aprovada' ? 'Aprovada' : 
+                     area.status === 'rejeitada' ? 'Rejeitada' : 'Pendente'}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.cardText}>ONG: {area.ong_nome}</Text>
+              <Text style={styles.cardText}>Descrição: {area.descricao}</Text>
+              {area.status === 'rejeitada' && area.motivo_rejeicao && (
+                <Text style={styles.cardTextDanger}>
+                  Motivo da rejeição: {area.motivo_rejeicao}
+                </Text>
+              )}
+              {(usuario.tipo === 'admin' || (usuario.tipo === 'ong' && area.ong_id === usuario.id)) && (
+                <View style={styles.cardActions}>
+                  <TouchableOpacity 
+                    style={[styles.button, styles.buttonDanger]}
+                    onPress={() => excluirArea(area.id)}
+                  >
+                    <Text style={styles.buttonText}>Excluir</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          ))
       )}
     </ScrollView>
   );
@@ -637,7 +697,19 @@ const AdminDashboard = ({ visible, onClose }) => {
       </Text>
       
       {marcadores.map(marcador => (
-        <View key={marcador.id} style={styles.card}>
+        <TouchableOpacity
+          key={marcador.id}
+          style={styles.card}
+          activeOpacity={0.85}
+          onPress={() => {
+            if (onSelectMarcador) {
+              onSelectMarcador(marcador);
+              onClose();
+            } else {
+              setMarcadorSelected(marcador);
+            }
+          }}
+        >
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>{marcador.nome}</Text>
             <View style={[
@@ -649,7 +721,6 @@ const AdminDashboard = ({ visible, onClose }) => {
               </Text>
             </View>
           </View>
-          
           <Text style={styles.cardText}>Tipo: {marcador.tipo}</Text>
           <Text style={styles.cardText}>Descrição: {marcador.descricao}</Text>
           <Text style={styles.cardText}>
@@ -662,13 +733,11 @@ const AdminDashboard = ({ visible, onClose }) => {
           <Text style={styles.cardText}>
             Criado em: {new Date(marcador.criado_em).toLocaleDateString()}
           </Text>
-          
           {marcador.resolvido && marcador.resolvido_em && (
             <Text style={styles.cardTextSuccess}>
               Resolvido em: {new Date(marcador.resolvido_em).toLocaleDateString()}
             </Text>
           )}
-          
           <View style={styles.cardActions}>
             <TouchableOpacity 
               style={[styles.button, marcador.resolvido ? styles.buttonWarning : styles.buttonSuccess]}
@@ -678,7 +747,6 @@ const AdminDashboard = ({ visible, onClose }) => {
                 {marcador.resolvido ? 'Reabrir' : 'Resolver'}
               </Text>
             </TouchableOpacity>
-            
             <TouchableOpacity 
               style={[styles.button, styles.buttonDanger]}
               onPress={() => excluirMarcador(marcador.id)}
@@ -686,7 +754,7 @@ const AdminDashboard = ({ visible, onClose }) => {
               <Text style={styles.buttonText}>Excluir</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </TouchableOpacity>
       ))}
       
       {marcadores.length === 0 && (
@@ -759,121 +827,109 @@ const AdminDashboard = ({ visible, onClose }) => {
 
   if (!usuario || (usuario.tipo !== 'admin' && usuario.tipo !== 'ong')) {
     return null;
-  }  return (
+  }
+  return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={styles.container}>
+      <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
         <View style={styles.header}>
-          <Text style={styles.title}>
-            Painel {usuario.tipo === 'admin' ? 'Administrativo' : 'da ONG'}
-          </Text>
+          <Text style={styles.title}>Painel Administrativo</Text>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Text style={styles.closeButtonText}>✕</Text>
+            <Text style={styles.closeButtonText}>×</Text>
           </TouchableOpacity>
         </View>
-
-        {renderTabButtons()}
-
-        <View style={styles.content}>
-          {activeTab === 'denuncias' && renderDenuncias()}
-          {activeTab === 'areas' && renderAreas()}
-          {activeTab === 'marcadores' && renderMarcadores()}
-        </View>
-
-        {/* Modal para rejeitar denúncia */}
-        <Modal
-          visible={denunciaSelected !== null}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setDenunciaSelected(null)}
+        <ScrollView
+          style={styles.container}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Rejeitar Denúncia</Text>
-              
-              <TextInput
-                style={styles.textArea}
-                placeholder="Observações (opcional)"
-                value={observacoes}
-                onChangeText={setObservacoes}
-                multiline
-                numberOfLines={4}
-              />
-              
-              <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={[styles.button, styles.buttonSecondary]}
-                  onPress={() => {
-                    setDenunciaSelected(null);
-                    setObservacoes('');
-                  }}
-                >
-                  <Text style={styles.buttonText}>Cancelar</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={[styles.button, styles.buttonDanger]}
-                  onPress={() => processarDenuncia(denunciaSelected.id, 'rejeitar')}
-                >
-                  <Text style={styles.buttonText}>Rejeitar</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+          {renderTabButtons()}
+          <View style={styles.content}>
+            {activeTab === 'denuncias' && renderDenuncias()}
+            {activeTab === 'areas' && (
+              <>
+                {usuario.tipo === 'ong' ? renderAreasONG() : renderAreas()}
+              </>
+            )}
+            {activeTab === 'marcadores' && renderMarcadores()}
           </View>
-        </Modal>
-
-        {/* Modal para rejeitar área */}
-        <Modal
-          visible={areaSelected !== null}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setAreaSelected(null)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Rejeitar Área</Text>
-              
-              <TextInput
-                style={styles.textArea}
-                placeholder="Motivo da rejeição *"
-                value={motivoRejeicao}
-                onChangeText={setMotivoRejeicao}
-                multiline
-                numberOfLines={4}
-              />
-              
-              <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={[styles.button, styles.buttonSecondary]}
-                  onPress={() => {
-                    setAreaSelected(null);
-                    setMotivoRejeicao('');
-                  }}
-                >
-                  <Text style={styles.buttonText}>Cancelar</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={[styles.button, styles.buttonDanger]}
-                  onPress={() => rejeitarArea(areaSelected.id)}
-                >
-                  <Text style={styles.buttonText}>Rejeitar</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
-
-        {loading && (
-          <View style={styles.loadingOverlay}>
-            <View style={styles.loadingContent}>
-              <Text style={styles.loadingText}>Carregando...</Text>
-            </View>
-          </View>
-        )}
+        </ScrollView>
       </View>
+      {/* Modal para rejeitar área */}
+      <Modal
+        visible={areaSelected !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAreaSelected(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Rejeitar Área</Text>
+            <TextInput
+              style={styles.textArea}
+              placeholder="Motivo da rejeição *"
+              value={motivoRejeicao}
+              onChangeText={setMotivoRejeicao}
+              multiline
+              numberOfLines={4}
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.button, styles.buttonSecondary]}
+                onPress={() => {
+                  setAreaSelected(null);
+                  setMotivoRejeicao('');
+                }}
+              >
+                <Text style={styles.buttonText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.button, styles.buttonDanger]}
+                onPress={() => rejeitarArea(areaSelected.id)}
+              >
+                <Text style={styles.buttonText}>Rejeitar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {marcadorSelected && (
+        <Modal
+          visible={!!marcadorSelected}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setMarcadorSelected(null)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Detalhes do Marcador</Text>
+              <Text style={styles.cardText}><Text style={{fontWeight:'bold'}}>Nome:</Text> {marcadorSelected.nome}</Text>
+              <Text style={styles.cardText}><Text style={{fontWeight:'bold'}}>Tipo:</Text> {marcadorSelected.tipo}</Text>
+              <Text style={styles.cardText}><Text style={{fontWeight:'bold'}}>Descrição:</Text> {marcadorSelected.descricao}</Text>
+              <Text style={styles.cardText}><Text style={{fontWeight:'bold'}}>Localização:</Text> {typeof marcadorSelected.latitude === 'number' && typeof marcadorSelected.longitude === 'number' ? `${marcadorSelected.latitude.toFixed(6)}, ${marcadorSelected.longitude.toFixed(6)}` : `${marcadorSelected.latitude || 'N/A'}, ${marcadorSelected.longitude || 'N/A'}`}</Text>
+              <Text style={styles.cardText}><Text style={{fontWeight:'bold'}}>Criado em:</Text> {new Date(marcadorSelected.criado_em).toLocaleDateString()}</Text>
+              {marcadorSelected.resolvido && marcadorSelected.resolvido_em && (
+                <Text style={styles.cardTextSuccess}><Text style={{fontWeight:'bold'}}>Resolvido em:</Text> {new Date(marcadorSelected.resolvido_em).toLocaleDateString()}</Text>
+              )}
+              <TouchableOpacity
+                style={[styles.button, styles.buttonSecondary, {marginTop: 16}]}
+                onPress={() => setMarcadorSelected(null)}
+              >
+                <Text style={styles.buttonText}>Fechar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingContent}>
+            <Text style={styles.loadingText}>Carregando...</Text>
+          </View>
+        </View>
+      )}
     </Modal>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -1097,5 +1153,4 @@ const styles = StyleSheet.create({
     color: '#1f2937',
   },
 });
-
 export default AdminDashboard;

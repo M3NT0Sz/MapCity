@@ -1,3 +1,22 @@
+// Corrige datas do MySQL para formato ISO
+// Corrige datas do MySQL para formato ISO e lida com datas inválidas
+function parseMySQLDate(dateStr) {
+  if (!dateStr) return null;
+  // Se já for ISO ou timestamp
+  if (typeof dateStr === 'string' && dateStr.includes('T')) {
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  // Se vier no formato MySQL "YYYY-MM-DD HH:mm:ss"
+  if (typeof dateStr === 'string' && dateStr.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/)) {
+    const iso = dateStr.replace(' ', 'T') + 'Z';
+    const d = new Date(iso);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  // Tenta criar Date diretamente
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? null : d;
+}
 import { lugaresAPI, areasAPI, uploadAPI, usuariosAPI as userAPI } from './api';
 import AdminAreasPanel from './AdminAreasPanel';
 import AdminDashboard from './AdminDashboard';
@@ -409,12 +428,7 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
         });
 
         // Adicionar popup como fallback visual
-        leafletMarker.bindPopup(`
-          <div style="text-align: center; padding: 8px;">
-            <strong>${PROBLEM_TYPES.find(t => t.value === marker.type)?.label || 'Problema'}</strong><br>
-            <small>Clique para ver detalhes</small>
-          </div>
-        `);
+  // Removido: não adicionar popup ao marcador
 
         window.markersAdded.add(marker.id);
         console.log('Marcador adicionado/atualizado:', marker.id, 'Resolvido:', marker.resolved);
@@ -974,8 +988,9 @@ export default function MapCityMap() {
       } else if (usuario.tipo === 'admin') {
         const { adminAreasAPI } = await import('./AdminAreasAPI');
         const data = await adminAreasAPI.buscarTodasAreas();
+        const areasArray = data.areas || [];
         // Filtrar apenas áreas aprovadas para mostrar no mapa
-        const areasAprovadas = data.filter(area => area.status === 'aprovada');
+        const areasAprovadas = areasArray.filter(area => area.status === 'aprovada');
         setAreas(areasAprovadas);
       } else if (usuario.tipo === 'usuario') {
         // Usuários comuns usam endpoint público para áreas aprovadas
@@ -1931,23 +1946,7 @@ export default function MapCityMap() {
                   )}
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={{
-                    backgroundColor: modernTheme.colors.primary,
-                    paddingHorizontal: modernTheme.spacing.md,
-                    paddingVertical: modernTheme.spacing.sm,
-                    borderRadius: modernTheme.borderRadius.md,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: modernTheme.spacing.xs
-                  }}
-                  onPress={() => setIsAreaModalVisible(true)}
-                >
-                  <Text style={{ color: 'white', fontSize: 16 }}>📍</Text>
-                  <Text style={{ color: 'white', fontWeight: 'bold' }}>
-                    Minhas Áreas
-                  </Text>
-                </TouchableOpacity>
+
 
                 {areaDrawingMode ? (
                   <>
@@ -3452,7 +3451,12 @@ export default function MapCityMap() {
                       {notificacao.titulo}
                     </Text>
                     <Text style={styles.notificationDate}>
-                      {new Date(notificacao.criado_em).toLocaleDateString()}
+                      {(() => {
+                        // Compatibilidade: aceita criada_em ou criado_em
+                        const dataRaw = notificacao.criada_em || notificacao.criado_em;
+                        const d = parseMySQLDate(dataRaw);
+                        return d ? d.toLocaleDateString() : 'Data inválida';
+                      })()}
                     </Text>
                   </View>
                   <Text style={styles.notificationMessage}>
@@ -3482,6 +3486,21 @@ export default function MapCityMap() {
       <AdminDashboard
         visible={isAdminDashboardVisible}
         onClose={() => setIsAdminDashboardVisible(false)}
+        onSelectMarcador={marcador => {
+          setSelectedMarker({
+            ...marcador,
+            lat: marcador.latitude,
+            lng: marcador.longitude,
+            type: marcador.tipo || marcador.type
+          });
+          // Dar zoom e centralizar no marcador
+          setTimeout(() => {
+            if (window.mapInstance && marcador.latitude && marcador.longitude) {
+              window.mapInstance.setView([marcador.latitude, marcador.longitude], 18, { animate: true });
+            }
+          }, 200);
+          setIsAdminDashboardVisible(false);
+        }}
       />
 
       {/* Modal de Exclusão de Área (ONG) */}

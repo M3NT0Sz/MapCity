@@ -138,11 +138,18 @@ export const lugaresAPI = {
     const response = await apiRequest(`/lugares/${id}`, {
       method: 'DELETE',
     });
-    
     if (response.ok) {
       return await response.json();
     }
-    throw new Error('Erro ao deletar lugar');
+    // Tenta mostrar mensagem detalhada do backend
+    let errorMessage = 'Erro ao deletar lugar';
+    try {
+      const error = await response.json();
+      errorMessage = error.error || errorMessage;
+    } catch (parseError) {
+      console.error('Erro ao parsear resposta de erro:', parseError);
+    }
+    throw new Error(errorMessage);
   },
 
   // Denunciar lugar/marcador
@@ -183,17 +190,19 @@ export const lugaresAPI = {
 // ========= ÁREAS API =========
 export const areasAPI = {
   // Buscar áreas da ONG
-  buscarAreas: async () => {
+  buscarAreas: async (ongId = null) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/areas`, {
+      let url = `${API_BASE_URL}/areas`;
+      if (ongId) {
+        url += `?ong_id=${ongId}`;
+      }
+      const response = await fetch(url, {
         method: 'GET',
         headers: getHeaders(),
       });
-
       if (!response.ok) {
         throw new Error(`Erro ${response.status}: ${response.statusText}`);
       }
-
       return await response.json();
     } catch (error) {
       console.error('Erro ao buscar áreas:', error);
@@ -263,17 +272,24 @@ export const areasAPI = {
   // Excluir área
   excluirArea: async (id) => {
     try {
+      console.log('[areasAPI.excluirArea] Iniciando fetch DELETE', `${API_BASE_URL}/areas/${id}`);
       const response = await fetch(`${API_BASE_URL}/areas/${id}`, {
         method: 'DELETE',
         headers: getHeaders(),
       });
+      console.log('[areasAPI.excluirArea] Resposta recebida', response);
 
       if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`Erro ${response.status}: ${response.statusText}`);
+        let errorMsg = `Erro ${response.status}: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          if (errorData && errorData.error) errorMsg = errorData.error;
+        } catch {}
+        throw new Error(errorMsg);
       }
 
       const result = await response.json();
+      console.log('[areasAPI.excluirArea] Resultado do fetch', result);
       return result;
     } catch (error) {
       console.error('Erro ao excluir área:', error);
