@@ -92,11 +92,12 @@ const AdminDashboard = ({ visible, onClose, onSelectMarcador, onSelectArea }) =>
   const carregarAreas = async () => {
     try {
       if (usuario.tipo === 'admin') {
+        // Buscar áreas pendentes com nome da ONG responsável
+        const pendentes = await adminAPI.buscarAreasPendentes();
+        setAreasPendentes(pendentes);
+        // Buscar todas as áreas para outra aba, se necessário
         const todas = await adminAPI.buscarTodasAreas();
         setTodasAreas(todas.areas || []);
-        setAreasPendentes((todas.areas || []).filter(area =>
-          (area.status || '').toLowerCase().replace(/\s/g, '').includes('pendente')
-        ));
       } else if (usuario.tipo === 'ong') {
         const areas = await areasAPI.buscarAreas(usuario.id);
         setTodasAreas(Array.isArray(areas) ? areas : (areas.areas || []));

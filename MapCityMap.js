@@ -78,57 +78,57 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
   }, [onMapClick]);
 
   React.useEffect(() => {
-  // ...log removido...
-    
+    // ...log removido...
+
     // Carrega CSS do Leaflet primeiro
     if (!document.querySelector('link[href*="leaflet"]')) {
       const cssLink = document.createElement('link');
       cssLink.rel = 'stylesheet';
       cssLink.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
       document.head.appendChild(cssLink);
-  // ...log removido...
+      // ...log removido...
     }
-    
+
     // JS do Leaflet
     if (!mapRef.current) {
-  // ...erro removido...
+      // ...erro removido...
       return;
     }
     if (window.L) {
-  // ...log removido...
+      // ...log removido...
       initMap();
     } else {
-  // ...log removido...
+      // ...log removido...
       const script = document.createElement('script');
       script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
       script.onload = () => {
-  // ...log removido...
+        // ...log removido...
         initMap();
       };
-  script.onerror = () => {};
+      script.onerror = () => { };
       document.head.appendChild(script);
       return;
     }
     function initMap() {
       if (!mapRef.current) {
-  // ...erro removido...
+        // ...erro removido...
         return;
       }
       if (!window.L) {
-  // ...erro removido...
+        // ...erro removido...
         return;
       }
-      
+
       if (isInitializing) {
-  // ...log removido...
+        // ...log removido...
         return;
       }
-      
+
       setIsInitializing(true);
-      
+
       // Verificar se já existe um mapa no container
       if (window.mapInstance) {
-  // ...log removido...
+        // ...log removido...
         try {
           window.mapInstance.remove();
           window.mapInstance = null;
@@ -136,37 +136,37 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
           console.warn('Erro ao remover mapa existente:', e);
         }
       }
-      
+
       // Limpar o container se necessário
       if (mapRef.current._leaflet_id) {
-  // ...log removido...
+        // ...log removido...
         delete mapRef.current._leaflet_id;
       }
-      
-  // ...log removido...
+
+      // ...log removido...
       try {
         const map = window.L.map(mapRef.current).setView([-22.1207, -51.3889], 13);
         window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '© OpenStreetMap contributors'
         }).addTo(map);
-        map.on('click', function(e) {
-          if (e.originalEvent && e.originalEvent.target && 
-              (e.originalEvent.target.closest('.leaflet-marker-icon') || 
-               e.originalEvent.target.closest('path'))) {
+        map.on('click', function (e) {
+          if (e.originalEvent && e.originalEvent.target &&
+            (e.originalEvent.target.closest('.leaflet-marker-icon') ||
+              e.originalEvent.target.closest('path'))) {
             // ...log removido...
             return;
           }
           const { lat, lng } = e.latlng;
-          
+
           // Validar coordenadas do clique
-          if (typeof lat !== 'number' || typeof lng !== 'number' || 
-              isNaN(lat) || isNaN(lng) || 
-              lat < -90 || lat > 90 || 
-              lng < -180 || lng > 180) {
+          if (typeof lat !== 'number' || typeof lng !== 'number' ||
+            isNaN(lat) || isNaN(lng) ||
+            lat < -90 || lat > 90 ||
+            lng < -180 || lng > 180) {
             // ...erro removido...
             return;
           }
-          
+
           // ...log removido...
           onMapClickRef.current(lat, lng);
         });
@@ -192,12 +192,12 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
         `;
         document.head.appendChild(style);
         setMapLoaded(true);
-  // ...log removido...
+        // ...log removido...
         window.mapInstance = map;
         window.markersAdded = new Set();
         setIsInitializing(false);
       } catch (error) {
-  // ...erro removido...
+        // ...erro removido...
         setIsInitializing(false);
       }
     }
@@ -205,11 +205,11 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
     if (window.L) {
       initMap();
     }
-    
+
     // Cleanup function
     return () => {
       if (window.mapInstance) {
-  // ...log removido...
+        // ...log removido...
         try {
           window.mapInstance.remove();
           window.mapInstance = null;
@@ -226,7 +226,7 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
   React.useEffect(() => {
     if (!mapLoaded || !window.mapInstance) return;
 
-  // ...log removido...
+    // ...log removido...
 
     // Limpa todos os marcadores existentes
     window.mapInstance.eachLayer((layer) => {
@@ -242,11 +242,11 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
 
     markers.forEach(marker => {
       // Validar coordenadas antes de criar o marcador
-      if (!marker || typeof marker.lat !== 'number' || typeof marker.lng !== 'number' || 
-          isNaN(marker.lat) || isNaN(marker.lng) || 
-          marker.lat < -90 || marker.lat > 90 || 
-          marker.lng < -180 || marker.lng > 180) {
-  // ...erro removido...
+      if (!marker || typeof marker.lat !== 'number' || typeof marker.lng !== 'number' ||
+        isNaN(marker.lat) || isNaN(marker.lng) ||
+        marker.lat < -90 || marker.lat > 90 ||
+        marker.lng < -180 || marker.lng > 180) {
+        // ...erro removido...
         return; // Pula este marcador
       }
 
@@ -276,8 +276,8 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
         // Adiciona símbolo de check se resolvido
         if (marker.resolved) {
           // Verificar novamente as coordenadas antes de criar o check marker
-          if (typeof marker.lat === 'number' && typeof marker.lng === 'number' && 
-              !isNaN(marker.lat) && !isNaN(marker.lng)) {
+          if (typeof marker.lat === 'number' && typeof marker.lng === 'number' &&
+            !isNaN(marker.lat) && !isNaN(marker.lng)) {
             const checkIcon = window.L.divIcon({
               html: `
                 <div style="
@@ -299,8 +299,8 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
               iconSize: [20, 20],
               iconAnchor: [10, 10]
             });
-            
-            const checkMarker = window.L.marker([marker.lat, marker.lng], { 
+
+            const checkMarker = window.L.marker([marker.lat, marker.lng], {
               icon: checkIcon,
               isCustomMarker: true,
               pane: 'markerPane',
@@ -308,7 +308,7 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
               interactive: true,
               bubblingMouseEvents: false
             }).addTo(window.mapInstance);
-            
+
             // Adiciona clique ao ícone de check também (PRIORIDADE MÁXIMA)
             checkMarker.on('click', (e) => {
               if (e.originalEvent) {
@@ -333,7 +333,7 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
               checkOverlay.style.cursor = 'pointer';
               checkOverlay.style.zIndex = '9999';
               checkOverlay.style.backgroundColor = 'transparent';
-              
+
               checkOverlay.addEventListener('click', (e) => {
                 e.stopPropagation();
                 e.stopImmediatePropagation();
@@ -342,7 +342,7 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
                 onMarkerClick(marker);
                 return false;
               }, true);
-              
+
               checkElement.style.position = 'relative';
               checkElement.appendChild(checkOverlay);
             }
@@ -374,13 +374,13 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
             e.originalEvent.stopImmediatePropagation();
             e.originalEvent.preventDefault();
           }
-          
+
           console.log('🖱️ MARCADOR CLICADO - PRIORIDADE MÁXIMA:', marker.id);
           console.log('🖱️ Dados do marcador:', marker);
-          
+
           // Executar imediatamente
           onMarkerClick(marker);
-          
+
           return false; // Garantir que não propague
         });
 
@@ -398,7 +398,7 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
           clickOverlay.style.zIndex = '9999';
           clickOverlay.style.backgroundColor = 'transparent';
           clickOverlay.style.borderRadius = '50%';
-          
+
           clickOverlay.addEventListener('click', (e) => {
             e.stopPropagation();
             e.stopImmediatePropagation();
@@ -407,13 +407,13 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
             onMarkerClick(marker);
             return false;
           }, true);
-          
+
           clickOverlay.addEventListener('mousedown', (e) => {
             e.stopPropagation();
             e.stopImmediatePropagation();
             console.log('🖱️ OVERLAY MOUSEDOWN:', marker.id);
           }, true);
-          
+
           markerElement.style.position = 'relative';
           markerElement.appendChild(clickOverlay);
         }
@@ -428,7 +428,7 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
         });
 
         // Adicionar popup como fallback visual
-  // Removido: não adicionar popup ao marcador
+        // Removido: não adicionar popup ao marcador
 
         window.markersAdded.add(marker.id);
         console.log('Marcador adicionado/atualizado:', marker.id, 'Resolvido:', marker.resolved);
@@ -475,26 +475,26 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
             return;
           }
         }
-        
+
         if (coordenadas && Array.isArray(coordenadas) && coordenadas.length >= 3) {
           // Validar coordenadas da área
-          const validCoords = coordenadas.filter(coord => 
-            coord && typeof coord.lat === 'number' && typeof coord.lng === 'number' && 
-            !isNaN(coord.lat) && !isNaN(coord.lng) && 
-            coord.lat >= -90 && coord.lat <= 90 && 
+          const validCoords = coordenadas.filter(coord =>
+            coord && typeof coord.lat === 'number' && typeof coord.lng === 'number' &&
+            !isNaN(coord.lat) && !isNaN(coord.lng) &&
+            coord.lat >= -90 && coord.lat <= 90 &&
             coord.lng >= -180 && coord.lng <= 180
           );
-          
+
           if (validCoords.length >= 3) {
             const latlngs = validCoords.map(coord => [coord.lat, coord.lng]);
-            
+
             // Definir cores baseadas no status da área
             let areaColors = {
               color: '#3B82F6',      // Azul para aprovadas
               fillColor: '#3B82F6',
               fillOpacity: 0.2
             };
-            
+
             // Cores diferentes para cada status
             switch (area.status) {
               case 'pendente':
@@ -520,7 +520,7 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
                 };
                 break;
             }
-            
+
             const polygon = window.L.polygon(latlngs, {
               ...areaColors,
               weight: 2,
@@ -533,7 +533,7 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
 
             // Para áreas aprovadas, adicionar evento de clique que permite criação de marcadores
             if (area.status === 'aprovada') {
-              polygon.on('click', function(e) {
+              polygon.on('click', function (e) {
                 // Repassar o evento para o mapa como se fosse um clique normal
                 if (window.mapInstance && onMapClick) {
                   onMapClick(e);
@@ -586,14 +586,14 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
       // Desenhar pontos
       areaPoints.forEach((point, index) => {
         // Validar coordenadas do ponto
-        if (!point || typeof point.lat !== 'number' || typeof point.lng !== 'number' || 
-            isNaN(point.lat) || isNaN(point.lng) || 
-            point.lat < -90 || point.lat > 90 || 
-            point.lng < -180 || point.lng > 180) {
+        if (!point || typeof point.lat !== 'number' || typeof point.lng !== 'number' ||
+          isNaN(point.lat) || isNaN(point.lng) ||
+          point.lat < -90 || point.lat > 90 ||
+          point.lng < -180 || point.lng > 180) {
           console.error('Ponto de área com coordenadas inválidas ignorado:', point);
           return; // Pula este ponto
         }
-        
+
         window.L.circleMarker([point.lat, point.lng], {
           radius: 6,
           color: '#F59E0B',
@@ -607,7 +607,7 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
       // Desenhar linha conectando os pontos se tiver mais de 1
       if (areaPoints.length > 1) {
         const latlngs = areaPoints.map(point => [point.lat, point.lng]);
-        
+
         window.L.polyline(latlngs, {
           color: '#F59E0B',
           weight: 3,
@@ -640,10 +640,10 @@ function SimpleMapView({ onMapClick, onMarkerClick, markers, areas = [], areaPoi
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'fixed', top: 0, left: 0, zIndex: 1000, backgroundColor: '#f0f0f0' }}>
-      <div 
+      <div
         ref={mapRef}
-        style={{ 
-          width: '100%', 
+        style={{
+          width: '100%',
           height: '100%',
           backgroundColor: '#e0e0e0',
           border: '2px solid red'
@@ -675,8 +675,8 @@ export default function MapCityMap() {
   // Estado para erro de imagem no carrossel
   const [imageError, setImageError] = useState(false);
   const { usuario, token, estaLogado, logout } = useAuth();
-  
-  
+
+
   React.useEffect(() => {
     if (estaLogado && usuario) {
       // Usuário logado
@@ -691,6 +691,40 @@ export default function MapCityMap() {
   const [description, setDescription] = useState('');
   const [selectedImages, setSelectedImages] = useState([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [modalMotivoVisible, setModalMotivoVisible] = useState(false);
+  const [motivoArea, setMotivoArea] = useState('');
+  const [finalizarAreaPending, setFinalizarAreaPending] = useState(false);
+
+  const confirmarCadastroArea = async () => {
+    if (!motivoArea.trim()) {
+      Alert.alert('Informe o motivo', 'Por favor, descreva o motivo do pedido da área.');
+      return;
+    }
+    setFinalizarAreaPending(true);
+    try {
+      const novaArea = {
+        nome: `Área ${new Date().toLocaleDateString()}`,
+        coordenadas: areaPoints,
+        ong_id: usuario.id,
+        descricao: motivoArea.trim()
+      };
+      await areasAPI.criarArea(novaArea);
+      Alert.alert('Sucesso', 'Área de responsabilidade criada com sucesso!');
+      setAreaDrawingMode(false);
+      setAreaPoints([]);
+      setMotivoArea('');
+      setModalMotivoVisible(false);
+      await carregarAreas();
+      if (typeof window !== 'undefined' && window.location) {
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error('❌ Erro ao criar área:', error);
+      Alert.alert('Erro', 'Não foi possível criar a área de responsabilidade.');
+    } finally {
+      setFinalizarAreaPending(false);
+    }
+  };
 
   // Resetar erro de imagem ao trocar de imagem no carrossel
   React.useEffect(() => {
@@ -699,7 +733,7 @@ export default function MapCityMap() {
   const [markerAddress, setMarkerAddress] = useState('');
   const [addressServiceFailed, setAddressServiceFailed] = useState(false);
   const [clickAddress, setClickAddress] = useState('');
-  
+
   // Estados para áreas de responsabilidade (ONGs)
   const [areas, setAreas] = useState([]);
   const [isAreaModalVisible, setIsAreaModalVisible] = useState(false);
@@ -721,11 +755,11 @@ export default function MapCityMap() {
   const generateFallbackAddress = (lat, lng) => {
     // Determina região aproximada baseada nas coordenadas
     let region = 'Localização Desconhecida';
-    
+
     // Coordenadas aproximadas do Brasil
     if (lat >= -35 && lat <= 5 && lng >= -75 && lng <= -30) {
       region = 'Brasil';
-      
+
       // Regiões aproximadas
       if (lat >= -15 && lng >= -50) {
         region = 'Região Central do Brasil';
@@ -737,20 +771,20 @@ export default function MapCityMap() {
         region = 'Região Norte/Nordeste do Brasil';
       }
     }
-    
+
     return `${region} (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
   };
 
   // Função auxiliar para formatar endereço do Nominatim
   const formatAddressFromNominatim = (address) => {
     let formattedAddress = '';
-    
+
     // Prioriza: Rua + Número, depois Bairro, depois Cidade
     const road = address.road || address.pedestrian || address.footway || address.cycleway;
     const houseNumber = address.house_number;
     const suburb = address.suburb || address.neighbourhood || address.city_district || address.quarter;
     const city = address.city || address.town || address.village || address.municipality;
-    
+
     if (road) {
       formattedAddress = road;
       if (houseNumber) {
@@ -770,7 +804,7 @@ export default function MapCityMap() {
       // Fallback para display_name
       formattedAddress = 'Local não identificado';
     }
-    
+
     return formattedAddress.trim() || 'Endereço não encontrado';
   };
 
@@ -799,7 +833,7 @@ export default function MapCityMap() {
       // Adicionar timeout e headers para melhor compatibilidade
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 segundos timeout
-      
+
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=pt-BR&zoom=18`,
         {
@@ -811,9 +845,9 @@ export default function MapCityMap() {
           mode: 'no-cors', // Tentar no-cors first para evitar CORS issues em desenvolvimento
         }
       );
-      
+
       clearTimeout(timeoutId);
-      
+
       // Se no-cors retornar opaque response, tente cors
       if (response.type === 'opaque') {
         console.warn('Resposta opaca recebida, tentando com CORS...');
@@ -827,11 +861,11 @@ export default function MapCityMap() {
             mode: 'cors',
           }
         );
-        
+
         if (!corsResponse.ok) {
           throw new Error(`Erro HTTP CORS: ${corsResponse.status}`);
         }
-        
+
         const data = await corsResponse.json();
         if (data && data.address) {
           return formatAddressFromNominatim(data.address);
@@ -840,7 +874,7 @@ export default function MapCityMap() {
         if (!response.ok) {
           throw new Error(`Erro HTTP: ${response.status}`);
         }
-        
+
         const data = await response.json();
         if (data && data.address) {
           return formatAddressFromNominatim(data.address);
@@ -848,7 +882,7 @@ export default function MapCityMap() {
       }
     } catch (error) {
       console.error(`Erro ao buscar endereço (tentativa ${retryCount + 1}):`, error);
-      
+
       // Tratamento específico para diferentes tipos de erro
       if (error.name === 'AbortError') {
         console.warn('Busca de endereço cancelada por timeout - tentando novamente');
@@ -868,11 +902,11 @@ export default function MapCityMap() {
 
   // Busca endereço quando um marcador é selecionado
   React.useEffect(() => {
-    if (selectedMarker && 
-        typeof selectedMarker.lat === 'number' && 
-        typeof selectedMarker.lng === 'number' &&
-        !isNaN(selectedMarker.lat) && 
-        !isNaN(selectedMarker.lng)) {
+    if (selectedMarker &&
+      typeof selectedMarker.lat === 'number' &&
+      typeof selectedMarker.lng === 'number' &&
+      !isNaN(selectedMarker.lat) &&
+      !isNaN(selectedMarker.lng)) {
       getAddressFromCoords(selectedMarker.lat, selectedMarker.lng)
         .then(address => setMarkerAddress(address));
     } else if (selectedMarker) {
@@ -883,11 +917,11 @@ export default function MapCityMap() {
 
   // Busca endereço quando uma posição é clicada para novo marcador
   React.useEffect(() => {
-    if (clickPosition && 
-        typeof clickPosition.lat === 'number' && 
-        typeof clickPosition.lng === 'number' &&
-        !isNaN(clickPosition.lat) && 
-        !isNaN(clickPosition.lng)) {
+    if (clickPosition &&
+      typeof clickPosition.lat === 'number' &&
+      typeof clickPosition.lng === 'number' &&
+      !isNaN(clickPosition.lat) &&
+      !isNaN(clickPosition.lng)) {
       getAddressFromCoords(clickPosition.lat, clickPosition.lng)
         .then(address => setClickAddress(address));
     } else if (clickPosition) {
@@ -980,7 +1014,7 @@ export default function MapCityMap() {
   // Carregar áreas de responsabilidade para todos os usuários
   const carregarAreas = useCallback(async () => {
     if (!usuario) return;
-    
+
     try {
       if (usuario.tipo === 'ong') {
         const data = await areasAPI.buscarAreas();
@@ -989,9 +1023,9 @@ export default function MapCityMap() {
         const { adminAreasAPI } = await import('./AdminAreasAPI');
         const data = await adminAreasAPI.buscarTodasAreas();
         const areasArray = data.areas || [];
-        // Filtrar apenas áreas aprovadas para mostrar no mapa
-        const areasAprovadas = areasArray.filter(area => area.status === 'aprovada');
-        setAreas(areasAprovadas);
+        // Exibir apenas áreas aprovadas e pendentes para admin (remover rejeitadas do mapa)
+        const areasVisiveis = areasArray.filter(area => area.status === 'aprovada' || area.status === 'pendente');
+        setAreas(areasVisiveis);
       } else if (usuario.tipo === 'usuario') {
         // Usuários comuns usam endpoint público para áreas aprovadas
         const data = await areasAPI.buscarAreasAprovadas();
@@ -999,12 +1033,12 @@ export default function MapCityMap() {
       }
     } catch (error) {
       console.error('❌ Erro ao carregar áreas:', error);
-      
+
       // Verificar se é erro de autenticação
       if (error.message.includes('Token') || error.message.includes('401') || error.message.includes('Sessão expirada')) {
         console.warn('🔐 Problema de autenticação detectado ao carregar áreas');
         Alert.alert(
-          'Sessão Expirada', 
+          'Sessão Expirada',
           'Sua sessão expirou. Por favor, faça login novamente.',
           [{ text: 'OK', onPress: () => logout() }]
         );
@@ -1018,7 +1052,7 @@ export default function MapCityMap() {
   // Carregar notificações para ONGs
   const carregarNotificacoes = useCallback(async () => {
     if (!usuario || usuario.tipo !== 'ong') return;
-    
+
     try {
       console.log('🔔 Carregando notificações para ONG:', usuario.id);
       const data = await areasAPI.buscarNotificacoes();
@@ -1029,7 +1063,7 @@ export default function MapCityMap() {
   }, [usuario]);
 
   // ========= FUNÇÕES DE ÁREA PARA ONGS =========
-  
+
   // Iniciar criação de área
   const iniciarCriacaoArea = () => {
     setAreaDrawingMode(true);
@@ -1046,40 +1080,19 @@ export default function MapCityMap() {
     setAreaPoints([]);
   };
 
-  // Finalizar criação de área
-  const finalizarCriacaoArea = async () => {
+  // Finalizar criação de área: agora só abre o modal
+  const finalizarCriacaoArea = () => {
     if (areaPoints.length < 3) {
       Alert.alert('Erro', 'É necessário marcar pelo menos 3 pontos para criar uma área.');
       return;
     }
-
-    try {
-      const novaArea = {
-        nome: `Área ${new Date().toLocaleDateString()}`,
-        coordenadas: areaPoints,
-        ong_id: usuario.id
-      };
-
-      console.log('📍 Criando nova área:', novaArea);
-      await areasAPI.criarArea(novaArea);
-      
-      Alert.alert('Sucesso', 'Área de responsabilidade criada com sucesso!');
-      
-      // Resetar estado e recarregar áreas
-      setAreaDrawingMode(false);
-      setAreaPoints([]);
-      await carregarAreas();
-      
-    } catch (error) {
-      console.error('❌ Erro ao criar área:', error);
-      Alert.alert('Erro', 'Não foi possível criar a área de responsabilidade.');
-    }
+    setModalMotivoVisible(true);
   };
 
   // Função para ONG excluir sua própria área
   const excluirAreaOng = useCallback(async (areaId, areaNome) => {
     console.log('🎭 Tipo de usuário:', usuario?.tipo);
-    
+
     // Encontrar a área para mostrar no modal
     const area = areas.find(a => a.id === areaId);
     if (area) {
@@ -1091,13 +1104,17 @@ export default function MapCityMap() {
 
   const confirmarExclusaoArea = async () => {
     if (!areaParaExcluir) return;
-    
+
     try {
       console.log('📤 ONG chamando API para excluir área:', areaParaExcluir.id);
       const result = await areasAPI.excluirArea(areaParaExcluir.id);
+      setAreaParaExcluir(null); // Fecha o modal antes do reload
       Alert.alert('Sucesso', 'Área excluída com sucesso!');
-      setAreaParaExcluir(null);
-      await carregarAreas();
+      setTimeout(() => {
+        if (typeof window !== 'undefined' && window.location) {
+          window.location.reload();
+        }
+      }, 100);
     } catch (error) {
       console.error('❌ Erro da ONG ao excluir área:', error);
       console.error('❌ Stack trace:', error.stack);
@@ -1109,8 +1126,7 @@ export default function MapCityMap() {
   const excluirConta = async () => {
     Alert.alert(
       'Excluir Conta',
-      `Tem certeza que deseja excluir sua conta permanentemente? ${
-        usuario.tipo === 'ong' ? 'Todas as suas áreas de responsabilidade também serão excluídas.' : ''
+      `Tem certeza que deseja excluir sua conta permanentemente? ${usuario.tipo === 'ong' ? 'Todas as suas áreas de responsabilidade também serão excluídas.' : ''
       } Esta ação não pode ser desfeita.`,
       [
         { text: 'Cancelar', style: 'cancel' },
@@ -1143,31 +1159,31 @@ export default function MapCityMap() {
 
   const handleMapClick = useCallback((lat, lng) => {
     console.log('Clique recebido:', lat, lng);
-    
+
     // Se estiver no modo de desenho de área, adicionar ponto
     if (areaDrawingMode && usuario && usuario.tipo === 'ong') {
       const newPoint = { lat, lng };
-      
+
       // Verificar se é o primeiro ponto sendo clicado novamente (fechar área)
       if (areaPoints.length >= 3) {
         const firstPoint = areaPoints[0];
         const distance = Math.sqrt(
           Math.pow(lat - firstPoint.lat, 2) + Math.pow(lng - firstPoint.lng, 2)
         );
-        
+
         // Se clicar próximo ao primeiro ponto (tolerância de 0.001)
         if (distance < 0.001) {
           finalizarCriacaoArea();
           return;
         }
       }
-      
+
       // Adicionar novo ponto
       setAreaPoints(prev => [...prev, newPoint]);
       console.log('📍 Ponto adicionado à área:', newPoint, 'Total:', areaPoints.length + 1);
       return;
     }
-    
+
     // Verificar se o usuário pode adicionar marcadores normais
     if (usuario.tipo === 'admin') {
       Alert.alert(
@@ -1177,7 +1193,7 @@ export default function MapCityMap() {
       );
       return;
     }
-    
+
     if (usuario.tipo === 'usuario' || usuario.tipo === 'ong') {
       setClickPosition({ lat, lng });
       setIsModalVisible(true);
@@ -1185,43 +1201,43 @@ export default function MapCityMap() {
   }, [usuario, areaDrawingMode, areaPoints, finalizarCriacaoArea]);
 
   // ========= FUNÇÕES UTILITÁRIAS =========
-  
+
   // Função para verificar se um ponto está dentro de um polígono (Ray Casting Algorithm)
   const isPointInPolygon = useCallback((point, polygon) => {
     if (!polygon || polygon.length < 3) {
       return false;
     }
-    
+
     const x = point.lat;
     const y = point.lng;
     let inside = false;
-    
+
     for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
       const xi = polygon[i].lat;
       const yi = polygon[i].lng;
       const xj = polygon[j].lat;
       const yj = polygon[j].lng;
-      
+
       if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
         inside = !inside;
       }
     }
-    
+
     return inside;
   }, []);
-  
+
   // Função para encontrar qual ONG é responsável por um ponto
   const findResponsibleONG = useCallback((lat, lng) => {
     if (!areas || areas.length === 0) {
       return null;
     }
-    
+
     const point = { lat: parseFloat(lat), lng: parseFloat(lng) };
-    
+
     for (const area of areas) {
       if (area.coordenadas) {
         let polygon = [];
-        
+
         try {
           // Verificar se coordenadas é string JSON
           if (typeof area.coordenadas === 'string') {
@@ -1240,7 +1256,7 @@ export default function MapCityMap() {
               lng: parseFloat(coord.lng)
             }));
           }
-          
+
           // Se conseguiu criar o polígono, verificar se o ponto está dentro
           if (polygon.length >= 3 && isPointInPolygon(point, polygon)) {
             return {
@@ -1256,7 +1272,7 @@ export default function MapCityMap() {
         }
       }
     }
-    
+
     return null;
   }, [areas, isPointInPolygon]);
 
@@ -1267,19 +1283,19 @@ export default function MapCityMap() {
   React.useEffect(() => {
     if (areas.length > 0 && !markersUpdatedRef.current) {
       markersUpdatedRef.current = true;
-      
+
       setMarkers(prevMarkers => {
         if (prevMarkers.length === 0) return prevMarkers;
-        
+
         return prevMarkers.map(marker => {
           // Se já tem informação da ONG, não precisa calcular
           if (marker.area_ong_nome) {
             return marker;
           }
-          
+
           // Calcular qual ONG é responsável
           const ongResponsavel = findResponsibleONG(marker.lat, marker.lng);
-          
+
           if (ongResponsavel) {
             console.log(`🏢 Marcador ${marker.id} está na área da ${ongResponsavel.ongNome}`);
             return {
@@ -1289,7 +1305,7 @@ export default function MapCityMap() {
               area_ong_email: ongResponsavel.ongEmail
             };
           }
-          
+
           return marker;
         });
       });
@@ -1304,20 +1320,20 @@ export default function MapCityMap() {
   // Função para fazer upload das imagens
   const uploadImages = async (images) => {
     console.log(' Iniciando upload de', images?.length || 0, 'imagens');
-    
+
     if (!images || images.length === 0) {
       console.log('⚠️ Nenhuma imagem fornecida para upload');
       return [];
     }
-    
+
     try {
       // Converter imagens para File objects
       const files = [];
-      
+
       for (let i = 0; i < images.length; i++) {
         const image = images[i];
         console.log(`📁 Processando imagem ${i + 1}/${images.length}:`, image.id);
-        
+
         try {
           // Determinar a URI da imagem
           let imageUri;
@@ -1329,20 +1345,20 @@ export default function MapCityMap() {
             console.error('❌ Objeto image não tem uri nem data:', image);
             continue;
           }
-          
+
           // Verificar se é data URL válida
           if (!imageUri.startsWith('data:')) {
             console.error('❌ URI não é data URL válida:', imageUri.substring(0, 100));
             continue;
           }
-          
+
           // Separar o header do base64
           const [header, base64Data] = imageUri.split(',');
           if (!base64Data) {
             console.error('❌ Não foi possível separar base64');
             continue;
           }
-          
+
           // Converter base64 para bytes
           const byteCharacters = atob(base64Data);
           const byteNumbers = new Array(byteCharacters.length);
@@ -1350,32 +1366,32 @@ export default function MapCityMap() {
             byteNumbers[j] = byteCharacters.charCodeAt(j);
           }
           const byteArray = new Uint8Array(byteNumbers);
-          
+
           // Detectar MIME type
           const mimeMatch = header.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+)/);
           const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-          
+
           // Criar File object
           const blob = new Blob([byteArray], { type: mimeType });
           const file = new File([blob], `image_${image.id}.jpg`, { type: mimeType });
-          
+
           files.push(file);
-          
+
         } catch (error) {
           console.error('❌ Erro ao processar imagem', image.id, ':', error);
         }
       }
-      
+
       if (files.length === 0) {
         console.log('⚠️ Nenhum arquivo válido para upload');
         return [];
       }
-      
+
       // Usar a API autenticada para upload
       console.log('🌐 Enviando', files.length, 'arquivos...');
       const result = await uploadAPI.enviarImagens(files);
       return result.images || [];
-      
+
     } catch (error) {
       console.error('❌ Erro no upload:', error);
       Alert.alert('Erro', 'Falha no upload das imagens');
@@ -1390,7 +1406,7 @@ export default function MapCityMap() {
     }
 
     console.log('🔐 Enviando marcador como:', usuario.email, '(', usuario.tipo, ')');
-    
+
     // Mapeia o tipo para um nome mais descritivo
     const nomesPorTipo = {
       'lixo': 'Problema de Lixo',
@@ -1398,13 +1414,13 @@ export default function MapCityMap() {
       'iluminacao': 'Problema de Iluminação',
       'outro': 'Outro Problema'
     };
-    
+
     const nomeProblema = nomesPorTipo[problemType] || 'Problema Reportado';
-    
+
     try {
       // Primeiro, fazer upload das imagens se houver
       let imagePaths = [];
-      
+
       if (selectedImages.length > 0) {
         console.log('📤 Fazendo upload de', selectedImages.length, 'imagem(s)...');
         imagePaths = await uploadImages(selectedImages);
@@ -1412,7 +1428,7 @@ export default function MapCityMap() {
 
       // Verificar se o marcador está dentro de uma área de ONG
       const ongResponsavel = findResponsibleONG(clickPosition.lat, clickPosition.lng);
-      
+
       // Usar API autenticada para criar lugar
       const dadosLugar = {
         nome: nomeProblema,
@@ -1427,7 +1443,7 @@ export default function MapCityMap() {
       };
       console.log('🏢 ONG responsável:', ongResponsavel);
       const novoLugar = await lugaresAPI.criar(dadosLugar);
-      
+
       // Adicionar à lista local
       setMarkers(prev => [
         ...prev,
@@ -1445,9 +1461,9 @@ export default function MapCityMap() {
           area_ong_email: ongResponsavel?.ongEmail || null
         }
       ]);
-      
+
       Alert.alert('Sucesso', 'Problema reportado com sucesso!');
-      
+
     } catch (err) {
       console.error('❌ Erro ao salvar marcador:', err);
       Alert.alert('Erro', err.message || 'Não foi possível salvar o marcador!');
@@ -1477,11 +1493,11 @@ export default function MapCityMap() {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       const img = new Image();
-      
+
       img.onload = () => {
         // Calcula nova dimensão mantendo proporção
         let { width, height } = img;
-        
+
         if (width > maxWidth || height > maxHeight) {
           if (width > height) {
             height = (height * maxWidth) / width;
@@ -1491,27 +1507,27 @@ export default function MapCityMap() {
             height = maxHeight;
           }
         }
-        
+
         canvas.width = width;
         canvas.height = height;
-        
+
         // Desenha imagem redimensionada
         ctx.drawImage(img, 0, 0, width, height);
-        
+
         // Converte para base64 com qualidade reduzida
         const resizedDataUrl = canvas.toDataURL('image/jpeg', quality);
         resolve(resizedDataUrl);
       };
-      
+
       img.src = URL.createObjectURL(file);
     });
   };
 
   const handleImageUpload = async (event) => {
     const files = Array.from(event.target.files);
-    
+
     if (files.length === 0) return;
-    
+
     // Limita a 5 imagens
     if (selectedImages.length + files.length > 5) {
       Alert.alert('Limite de imagens', 'Máximo de 5 imagens por problema.');
@@ -1522,7 +1538,7 @@ export default function MapCityMap() {
       try {
         // Redimensiona a imagem antes de adicionar
         const resizedImage = await resizeImage(file);
-        
+
         setSelectedImages(prev => [...prev, {
           id: Date.now() + Math.random(),
           data: resizedImage,
@@ -1562,27 +1578,27 @@ export default function MapCityMap() {
       console.log('Nenhum marcador selecionado');
       return;
     }
-    
+
     console.log('🔐 Marcando como resolvido:', selectedMarker.id, 'por', usuario.email);
-    
+
     try {
       // Usar API autenticada para resolver
       await lugaresAPI.resolver(selectedMarker.id, true);
 
       // Atualizar no frontend
       setMarkers(prev => {
-        const updated = prev.map(marker => 
-          marker.id === selectedMarker.id 
+        const updated = prev.map(marker =>
+          marker.id === selectedMarker.id
             ? { ...marker, resolved: true, resolvedAt: new Date().toISOString() }
             : marker
         );
         return updated;
       });
-      
+
       setIsViewModalVisible(false);
       setSelectedMarker(null);
       Alert.alert('Sucesso', 'Problema marcado como resolvido!');
-      
+
     } catch (error) {
       console.error('❌ Erro ao marcar como resolvido:', error);
       Alert.alert('Erro', 'Não foi possível marcar como resolvido');
@@ -1595,12 +1611,12 @@ export default function MapCityMap() {
       console.log('Nenhum marcador selecionado');
       return;
     }
-    
+
     if (usuario.tipo !== 'admin') {
       Alert.alert('Erro', 'Apenas administradores podem deletar marcadores');
       return;
     }
-    
+
     // Usar modal customizado em vez de Alert
     setMarcadorParaExcluir({
       id: selectedMarker.id,
@@ -1628,10 +1644,10 @@ export default function MapCityMap() {
       // ONG pode deletar marcadores - usar a API padrão
       if (usuario.tipo === 'ong') {
         console.log('🗑️ ONG tentando deletar marcador:', markerId);
-        
+
         // Usar a API padrão de lugares para deletar
         await lugaresAPI.deletar(markerId);
-        
+
         // Atualizar estado local
         setMarkers(prev => prev.filter(marker => marker.id !== markerId));
         setIsViewModalVisible(false);
@@ -1641,7 +1657,7 @@ export default function MapCityMap() {
       }
 
       Alert.alert('Erro', 'Você não tem permissão para deletar marcadores.');
-      
+
     } catch (error) {
       console.error('❌ Erro ao deletar marcador:', error);
       Alert.alert('Erro', 'Não foi possível deletar o marcador.');
@@ -1667,7 +1683,7 @@ export default function MapCityMap() {
   // Função para iniciar denúncia
   const iniciarDenuncia = useCallback((marker) => {
     if (!marker || !usuario) return;
-    
+
     setMarcadorParaDenunciar(marker);
     setMotivoDenuncia('');
     setDescricaoDenuncia('');
@@ -1699,7 +1715,7 @@ export default function MapCityMap() {
 
       // Mostrar confirmação melhorada com mais informações
       Alert.alert(
-        '✅ Denúncia Enviada com Sucesso!', 
+        '✅ Denúncia Enviada com Sucesso!',
         `Obrigado por contribuir com a comunidade!\n\n` +
         `📍 Marcador: ${marcadorParaDenunciar.nome}\n` +
         `🚨 Motivo: ${MOTIVOS_DENUNCIA.find(m => m.value === motivoDenuncia)?.label}\n` +
@@ -1711,8 +1727,8 @@ export default function MapCityMap() {
         `• Medidas serão tomadas se procedente\n\n` +
         `⏱️ Tempo estimado de análise: 24-48 horas`,
         [
-          { 
-            text: 'Entendi', 
+          {
+            text: 'Entendi',
             style: 'default'
           }
         ]
@@ -1721,7 +1737,7 @@ export default function MapCityMap() {
     } catch (error) {
       console.error('❌ Erro ao enviar denúncia:', error);
       Alert.alert(
-        'Erro', 
+        'Erro',
         `Não foi possível enviar a denúncia: ${error.message}\n\nTente novamente mais tarde.`
       );
     }
@@ -1735,21 +1751,21 @@ export default function MapCityMap() {
   // Confirmar exclusão de marcador
   const confirmarExclusaoMarcador = async () => {
     if (!marcadorParaExcluir) return;
-    
+
     try {
       console.log('🗑️ Admin confirmou exclusão do marcador:', marcadorParaExcluir.id);
       await lugaresAPI.deletar(marcadorParaExcluir.id);
-      
+
       // Remover do frontend
       setMarkers(prev => prev.filter(marker => marker.id !== marcadorParaExcluir.id));
-      
+
       // Sempre fechar todos os modals relacionados ao marcador
       setIsViewModalVisible(false);
       setSelectedMarker(null);
       setMarcadorParaExcluir(null);
-      
+
       Alert.alert('Sucesso', 'Marcador deletado com sucesso!');
-      
+
     } catch (error) {
       console.error('❌ Erro ao deletar marcador:', error);
       Alert.alert('Erro', 'Não foi possível deletar o marcador');
@@ -1760,9 +1776,9 @@ export default function MapCityMap() {
   const marcarNotificacaoLida = useCallback(async (notificacaoId) => {
     try {
       await areasAPI.marcarComoLida(notificacaoId);
-      setNotificacoes(prev => 
-        prev.map(notif => 
-          notif.id === notificacaoId 
+      setNotificacoes(prev =>
+        prev.map(notif =>
+          notif.id === notificacaoId
             ? { ...notif, lida: true }
             : notif
         )
@@ -1773,9 +1789,9 @@ export default function MapCityMap() {
   }, []);
 
   return (
-    <View style={{ 
-      flex: 1, 
-      backgroundColor: modernTheme.colors.background 
+    <View style={{
+      flex: 1,
+      backgroundColor: modernTheme.colors.background
     }}>
       {/* Header Moderno */}
       <View style={{
@@ -1798,13 +1814,13 @@ export default function MapCityMap() {
           alignItems: 'center',
           justifyContent: 'space-between'
         }}>
-          
+
           {/* Badge do tipo de usuário */}
           {usuario && (
             <View style={{
-              backgroundColor: usuario.tipo === 'admin' ? modernTheme.colors.danger : 
-                             usuario.tipo === 'ong' ? modernTheme.colors.secondary : 
-                             modernTheme.colors.primary,
+              backgroundColor: usuario.tipo === 'admin' ? modernTheme.colors.danger :
+                usuario.tipo === 'ong' ? modernTheme.colors.secondary :
+                  modernTheme.colors.primary,
               paddingHorizontal: modernTheme.spacing.sm,
               paddingVertical: modernTheme.spacing.xs,
               borderRadius: modernTheme.borderRadius.md
@@ -1814,9 +1830,9 @@ export default function MapCityMap() {
                 fontSize: 12,
                 fontWeight: 'bold'
               }}>
-                {usuario.tipo === 'admin' ? '👑 Admin' : 
-                 usuario.tipo === 'ong' ? '🏢 ONG' : 
-                 '👤 Usuário'}
+                {usuario.tipo === 'admin' ? '👑 Admin' :
+                  usuario.tipo === 'ong' ? '🏢 ONG' :
+                    '👤 Usuário'}
               </Text>
             </View>
           )}
@@ -1849,7 +1865,7 @@ export default function MapCityMap() {
               Problemas
             </Text>
           </View>
-          
+
           <View style={{
             flex: 1,
             backgroundColor: modernTheme.colors.success + '10',
@@ -1872,7 +1888,7 @@ export default function MapCityMap() {
               Resolvidos
             </Text>
           </View>
-          
+
           <View style={{
             flex: 1,
             backgroundColor: modernTheme.colors.secondary + '10',
@@ -2011,33 +2027,6 @@ export default function MapCityMap() {
             {/* Botões para Admin */}
             {usuario.tipo === 'admin' && (
               <>
-                <TouchableOpacity
-                  style={{
-                    backgroundColor: modernTheme.colors.danger,
-                    paddingHorizontal: modernTheme.spacing.md,
-                    paddingVertical: modernTheme.spacing.sm,
-                    borderRadius: modernTheme.borderRadius.md,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: modernTheme.spacing.xs,
-                    elevation: 10,
-                    zIndex: 10000,
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.25,
-                    shadowRadius: 3.84,
-                  }}
-                  onPress={() => {
-                    console.log('🛠️ Botão Admin Areas clicado!');
-                    setIsAdminAreasPanelVisible(true);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={{ color: 'white', fontSize: 16 }}>🗺️</Text>
-                  <Text style={{ color: 'white', fontWeight: 'bold' }}>
-                    Gerenciar Áreas
-                  </Text>
-                </TouchableOpacity>
 
                 <TouchableOpacity
                   style={{
@@ -2154,7 +2143,7 @@ export default function MapCityMap() {
 
       {/* Mapa */}
       <View style={{ flex: 1, position: 'relative' }}>
-        <SimpleMapView 
+        <SimpleMapView
           onMapClick={handleMapClick}
           onMarkerClick={handleMarkerClick}
           markers={markers}
@@ -2162,7 +2151,7 @@ export default function MapCityMap() {
           areaPoints={areaPoints}
           areaDrawingMode={areaDrawingMode}
         />
-        
+
         {/* Aviso de serviço de endereços */}
         {addressServiceFailed && (
           <View style={{
@@ -2209,8 +2198,8 @@ export default function MapCityMap() {
           }}
           onPress={() => Alert.alert('Dica', 'Clique no mapa para reportar um problema!')}
         >
-          <Text style={{ 
-            fontSize: 24, 
+          <Text style={{
+            fontSize: 24,
             color: 'white',
             fontWeight: 'bold'
           }}>
@@ -2268,7 +2257,7 @@ export default function MapCityMap() {
                   ×
                 </Text>
               </TouchableOpacity>
-              
+
               <View style={{ flex: 1, marginLeft: modernTheme.spacing.md }}>
                 <Text style={{
                   fontSize: 20,
@@ -2287,13 +2276,13 @@ export default function MapCityMap() {
                   {clickAddress || 'Carregando endereço...'}
                 </Text>
               </View>
-              
+
               <View style={{ width: 40 }} />
             </View>
           </View>
-          
-          <ScrollView 
-            style={{ flex: 1, padding: modernTheme.spacing.lg }} 
+
+          <ScrollView
+            style={{ flex: 1, padding: modernTheme.spacing.lg }}
             showsVerticalScrollIndicator={false}
           >
             {/* Localização */}
@@ -2321,11 +2310,11 @@ export default function MapCityMap() {
                 </Text>
               </View>
             )}
-            
+
             {/* Informações da ONG Responsável */}
             {clickPosition && (() => {
               const ongResponsavel = findResponsibleONG(clickPosition.lat, clickPosition.lng);
-              
+
               if (ongResponsavel) {
                 return (
                   <View style={{
@@ -2356,7 +2345,7 @@ export default function MapCityMap() {
                       color: modernTheme.colors.text,
                       opacity: 0.8
                     }}>
-                      Esta localização está dentro da área de responsabilidade da {ongResponsavel.ongNome}. 
+                      Esta localização está dentro da área de responsabilidade da {ongResponsavel.ongNome}.
                       Eles serão notificados sobre este problema.
                     </Text>
                   </View>
@@ -2364,7 +2353,7 @@ export default function MapCityMap() {
               }
               return null;
             })()}
-            
+
             {/* Tipo de Problema */}
             <Text style={{
               fontSize: 16,
@@ -2374,11 +2363,11 @@ export default function MapCityMap() {
             }}>
               Tipo de Problema *
             </Text>
-            <View style={{ 
-              flexDirection: 'row', 
-              flexWrap: 'wrap', 
+            <View style={{
+              flexDirection: 'row',
+              flexWrap: 'wrap',
               gap: modernTheme.spacing.sm,
-              marginBottom: modernTheme.spacing.lg 
+              marginBottom: modernTheme.spacing.lg
             }}>
               {PROBLEM_TYPES.map((type) => (
                 <TouchableOpacity
@@ -2386,12 +2375,12 @@ export default function MapCityMap() {
                   style={{
                     flex: 1,
                     minWidth: '45%',
-                    backgroundColor: problemType === type.value 
-                      ? modernTheme.colors.primary 
+                    backgroundColor: problemType === type.value
+                      ? modernTheme.colors.primary
                       : modernTheme.colors.surface,
                     borderWidth: 2,
-                    borderColor: problemType === type.value 
-                      ? modernTheme.colors.primary 
+                    borderColor: problemType === type.value
+                      ? modernTheme.colors.primary
                       : modernTheme.colors.border,
                     borderRadius: modernTheme.borderRadius.lg,
                     padding: modernTheme.spacing.md,
@@ -2474,8 +2463,8 @@ export default function MapCityMap() {
                   style={{ display: 'none' }}
                   id="image-upload"
                 />
-                <label 
-                  htmlFor="image-upload" 
+                <label
+                  htmlFor="image-upload"
                   style={{
                     cursor: 'pointer',
                     display: 'flex',
@@ -2508,9 +2497,9 @@ export default function MapCityMap() {
                     {selectedImages.length}/5 fotos selecionadas
                   </Text>
                 </label>
-                
+
                 {selectedImages.length > 0 && (
-                  <View style={{ 
+                  <View style={{
                     marginTop: modernTheme.spacing.md,
                     flexDirection: 'row',
                     flexWrap: 'wrap',
@@ -2520,9 +2509,9 @@ export default function MapCityMap() {
                   }}>
                     {selectedImages.map((image) => (
                       <View key={image.id} style={{ position: 'relative' }}>
-                        <img 
-                          src={image.data} 
-                          alt="Preview" 
+                        <img
+                          src={image.data}
+                          alt="Preview"
                           style={{
                             width: 80,
                             height: 80,
@@ -2545,10 +2534,10 @@ export default function MapCityMap() {
                           }}
                           onPress={() => removeImage(image.id)}
                         >
-                          <Text style={{ 
-                            color: 'white', 
-                            fontSize: 12, 
-                            fontWeight: 'bold' 
+                          <Text style={{
+                            color: 'white',
+                            fontSize: 12,
+                            fontWeight: 'bold'
                           }}>
                             ×
                           </Text>
@@ -2559,7 +2548,7 @@ export default function MapCityMap() {
                 )}
               </View>
             ) : (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={{
                   backgroundColor: modernTheme.colors.surface,
                   borderWidth: 1,
@@ -2579,12 +2568,12 @@ export default function MapCityMap() {
                 </Text>
               </TouchableOpacity>
             )}
-            
+
             {/* Botão de Submit */}
             <TouchableOpacity
               style={{
-                backgroundColor: (!problemType || !description) 
-                  ? modernTheme.colors.border 
+                backgroundColor: (!problemType || !description)
+                  ? modernTheme.colors.border
                   : modernTheme.colors.success,
                 borderRadius: modernTheme.borderRadius.lg,
                 padding: modernTheme.spacing.md,
@@ -2608,7 +2597,7 @@ export default function MapCityMap() {
       </Modal>
 
       {/* Modal Moderno de Visualização do Problema */}
-      {}
+      { }
       <Modal
         visible={isViewModalVisible}
         animationType="slide"
@@ -2659,7 +2648,7 @@ export default function MapCityMap() {
                   ×
                 </Text>
               </TouchableOpacity>
-              
+
               <View style={{ flex: 1, marginLeft: modernTheme.spacing.md }}>
                 <Text style={{
                   fontSize: 20,
@@ -2678,19 +2667,19 @@ export default function MapCityMap() {
                   {markerAddress || 'Carregando endereço...'}
                 </Text>
               </View>
-              
+
               <View style={{ width: 40 }} />
             </View>
           </View>
-          
+
           <ScrollView style={{
             flex: 1,
             padding: modernTheme.spacing.lg
           }} showsVerticalScrollIndicator={false}>
-            {}
+            { }
             {selectedMarker ? (
               <>
-                {}
+                { }
                 {/* Status Badge */}
                 <View style={{
                   backgroundColor: selectedMarker.resolved ? modernTheme.colors.success : modernTheme.colors.warning,
@@ -2752,7 +2741,7 @@ export default function MapCityMap() {
                     }}>
                       Imagens do Problema ({selectedMarker.images.length})
                     </Text>
-                    
+
                     {/* Carrossel Moderno */}
                     <View style={{
                       position: 'relative',
@@ -2763,20 +2752,20 @@ export default function MapCityMap() {
                       minHeight: 200,
                       maxHeight: 400,
                     }}>
-                      <img 
+                      <img
                         src={
                           imageError
                             ? '/logoMap.png'
                             : (() => {
-                                const img = selectedMarker.images[currentImageIndex];
-                                if (!img) return '/logoMap.png';
-                                if (typeof img === 'object' && img.data) return img.data;
-                                const path = typeof img === 'object' && img.path ? img.path : img;
-                                if (typeof path === 'string' && path.startsWith('/uploads/')) {
-                                  return `http://localhost:3001${path}`;
-                                }
-                                return path;
-                              })()
+                              const img = selectedMarker.images[currentImageIndex];
+                              if (!img) return '/logoMap.png';
+                              if (typeof img === 'object' && img.data) return img.data;
+                              const path = typeof img === 'object' && img.path ? img.path : img;
+                              if (typeof path === 'string' && path.startsWith('/uploads/')) {
+                                return `http://localhost:3001${path}`;
+                              }
+                              return path;
+                            })()
                         }
                         alt={`Problema - Imagem ${currentImageIndex + 1}`}
                         style={{
@@ -2793,11 +2782,11 @@ export default function MapCityMap() {
                         }}
                       />
                       {imageError && (
-                        <div style={{textAlign: 'center', color: 'gray', marginTop: 8}}>
+                        <div style={{ textAlign: 'center', color: 'gray', marginTop: 8 }}>
                           Imagem indisponível
                         </div>
                       )}
-                      
+
                       {/* Controles do Carrossel */}
                       {selectedMarker.images.length > 1 && (
                         <>
@@ -2814,13 +2803,13 @@ export default function MapCityMap() {
                               alignItems: 'center',
                               justifyContent: 'center'
                             }}
-                            onPress={() => setCurrentImageIndex(prev => 
+                            onPress={() => setCurrentImageIndex(prev =>
                               prev === 0 ? selectedMarker.images.length - 1 : prev - 1
                             )}
                           >
                             <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}>‹</Text>
                           </TouchableOpacity>
-                          
+
                           <TouchableOpacity
                             style={{
                               position: 'absolute',
@@ -2834,13 +2823,13 @@ export default function MapCityMap() {
                               alignItems: 'center',
                               justifyContent: 'center'
                             }}
-                            onPress={() => setCurrentImageIndex(prev => 
+                            onPress={() => setCurrentImageIndex(prev =>
                               prev === selectedMarker.images.length - 1 ? 0 : prev + 1
                             )}
                           >
                             <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}>›</Text>
                           </TouchableOpacity>
-                          
+
                           {/* Indicadores */}
                           <View style={{
                             position: 'absolute',
@@ -2857,15 +2846,15 @@ export default function MapCityMap() {
                                   width: 10,
                                   height: 10,
                                   borderRadius: 5,
-                                  backgroundColor: index === currentImageIndex 
-                                    ? 'white' 
+                                  backgroundColor: index === currentImageIndex
+                                    ? 'white'
                                     : 'rgba(255,255,255,0.5)'
                                 }}
                                 onPress={() => setCurrentImageIndex(index)}
                               />
                             ))}
                           </View>
-                          
+
                           {/* Contador */}
                           <View style={{
                             position: 'absolute',
@@ -2883,7 +2872,7 @@ export default function MapCityMap() {
                         </>
                       )}
                     </View>
-                    
+
                     {/* Miniaturas */}
                     {selectedMarker.images.length > 1 && (
                       <View style={{
@@ -2907,8 +2896,8 @@ export default function MapCityMap() {
                           >
                             <img
                               src={
-                                image.data || 
-                                (image?.startsWith('/uploads/') 
+                                image.data ||
+                                (image?.startsWith('/uploads/')
                                   ? `http://localhost:3001${image}`
                                   : image)
                               }
@@ -2958,13 +2947,13 @@ export default function MapCityMap() {
                 {/* Informações da ONG Responsável */}
                 {(() => {
                   // Verificar se o marcador tem informações da ONG ou calcular dinamicamente
-                  const ongInfo = selectedMarker.area_ong_nome ? 
+                  const ongInfo = selectedMarker.area_ong_nome ?
                     {
                       nome: selectedMarker.area_ong_nome,
                       email: selectedMarker.area_ong_email
-                    } : 
+                    } :
                     findResponsibleONG(selectedMarker.lat, selectedMarker.lng);
-                    
+
                   if (ongInfo && ongInfo.nome) {
                     return (
                       <View style={{
@@ -3029,7 +3018,7 @@ export default function MapCityMap() {
                   }}>
                     Informações do Relato
                   </Text>
-                  
+
                   <View style={{ gap: modernTheme.spacing.sm }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                       <Text style={{
@@ -3047,7 +3036,7 @@ export default function MapCityMap() {
                         {markerAddress || 'Carregando...'}
                       </Text>
                     </View>
-                    
+
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                       <Text style={{
                         fontSize: 14,
@@ -3063,7 +3052,7 @@ export default function MapCityMap() {
                         {selectedMarker.lat?.toFixed(6)}, {selectedMarker.lng?.toFixed(6)}
                       </Text>
                     </View>
-                    
+
                     {selectedMarker.createdAt && (
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                         <Text style={{
@@ -3078,7 +3067,7 @@ export default function MapCityMap() {
                         }}>
                           {new Date(selectedMarker.createdAt).toLocaleString('pt-BR', {
                             day: '2-digit',
-                            month: '2-digit', 
+                            month: '2-digit',
                             year: 'numeric',
                             hour: '2-digit',
                             minute: '2-digit'
@@ -3086,7 +3075,7 @@ export default function MapCityMap() {
                         </Text>
                       </View>
                     )}
-                    
+
                     {selectedMarker.reportedBy && (
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                         <Text style={{
@@ -3116,10 +3105,10 @@ export default function MapCityMap() {
                     padding: modernTheme.spacing.md,
                     marginBottom: modernTheme.spacing.lg
                   }}>
-                    <View style={{ 
-                      flexDirection: 'row', 
-                      alignItems: 'center', 
-                      marginBottom: modernTheme.spacing.sm 
+                    <View style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      marginBottom: modernTheme.spacing.sm
                     }}>
                       <Text style={{
                         fontSize: 18,
@@ -3140,14 +3129,14 @@ export default function MapCityMap() {
                       fontSize: 12,
                       color: modernTheme.colors.success
                     }}>
-                      Resolvido em: {selectedMarker.resolvedAt 
+                      Resolvido em: {selectedMarker.resolvedAt
                         ? new Date(selectedMarker.resolvedAt).toLocaleString('pt-BR', {
-                            day: '2-digit',
-                            month: '2-digit', 
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })
                         : 'Data não disponível'
                       }
                     </Text>
@@ -3269,7 +3258,7 @@ export default function MapCityMap() {
                       </Text>
                     </TouchableOpacity>
                   )}
-                  
+
                   {/* Botão Compartilhar - Para todos os usuários */}
                   <TouchableOpacity
                     style={{
@@ -3334,7 +3323,7 @@ export default function MapCityMap() {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.closeButton}
               onPress={() => setIsAreaModalVisible(false)}
             >
@@ -3343,7 +3332,7 @@ export default function MapCityMap() {
             <Text style={styles.modalTitle}>Minhas Áreas</Text>
             <View style={styles.headerSpacer} />
           </View>
-          
+
           <ScrollView style={styles.modalContent}>
             {areas.length === 0 ? (
               <View style={styles.emptyState}>
@@ -3365,8 +3354,8 @@ export default function MapCityMap() {
                   <Text style={styles.areaPoints}>
                     📍 {(() => {
                       try {
-                        const coords = typeof area.coordenadas === 'string' 
-                          ? JSON.parse(area.coordenadas) 
+                        const coords = typeof area.coordenadas === 'string'
+                          ? JSON.parse(area.coordenadas)
                           : area.coordenadas;
                         return Array.isArray(coords) ? coords.length : 0;
                       } catch (e) {
@@ -3377,19 +3366,19 @@ export default function MapCityMap() {
                   {area.descricao && (
                     <Text style={styles.areaDescription}>{area.descricao}</Text>
                   )}
-                  
+
                   {/* Status da área */}
                   <View style={styles.areaStatus}>
                     <Text style={[styles.statusBadge, {
-                      backgroundColor: area.status === 'pendente' ? '#F59E0B' : 
-                                      area.status === 'aprovada' ? '#10B981' : '#EF4444',
+                      backgroundColor: area.status === 'pendente' ? '#F59E0B' :
+                        area.status === 'aprovada' ? '#10B981' : '#EF4444',
                       color: 'white'
                     }]}>
-                      {area.status === 'pendente' ? '⏳ Pendente' : 
-                       area.status === 'aprovada' ? '✅ Aprovada' : '❌ Rejeitada'}
+                      {area.status === 'pendente' ? '⏳ Pendente' :
+                        area.status === 'aprovada' ? '✅ Aprovada' : '❌ Rejeitada'}
                     </Text>
                   </View>
-                  
+
                   {/* Botão de excluir área */}
                   <TouchableOpacity
                     style={styles.deleteAreaButton}
@@ -3417,7 +3406,7 @@ export default function MapCityMap() {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.closeButton}
               onPress={() => setIsNotificationModalVisible(false)}
             >
@@ -3426,7 +3415,7 @@ export default function MapCityMap() {
             <Text style={styles.modalTitle}>Notificações</Text>
             <View style={styles.headerSpacer} />
           </View>
-          
+
           <ScrollView style={styles.modalContent}>
             {notificacoes.length === 0 ? (
               <View style={styles.emptyState}>
@@ -3471,7 +3460,7 @@ export default function MapCityMap() {
           </ScrollView>
         </View>
       </Modal>
-      
+
       {/* Painel Administrativo de Áreas */}
       <AdminAreasPanel
         visible={isAdminAreasPanelVisible}
@@ -3507,7 +3496,7 @@ export default function MapCityMap() {
             if (window.mapInstance && area.coordenadas) {
               let coords = area.coordenadas;
               if (typeof coords === 'string') {
-                try { coords = JSON.parse(coords); } catch {}
+                try { coords = JSON.parse(coords); } catch { }
               }
               if (Array.isArray(coords) && coords.length > 0) {
                 const latlngs = coords.map(c => [c.lat, c.lng]);
@@ -3519,9 +3508,9 @@ export default function MapCityMap() {
       />
 
       {/* Modal de Exclusão de Área (ONG) */}
-      <Modal 
-        visible={!!areaParaExcluir} 
-        animationType="fade" 
+      <Modal
+        visible={!!areaParaExcluir}
+        animationType="fade"
         transparent={true}
       >
         <View style={{
@@ -3541,19 +3530,19 @@ export default function MapCityMap() {
             <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 15, color: '#DC2626' }}>
               🗑️ Excluir Área
             </Text>
-            
+
             <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 10 }}>
               Tem certeza que deseja excluir a área:
             </Text>
-            
+
             <Text style={{ fontSize: 16, fontWeight: '600', color: '#1F2937', marginBottom: 20 }}>
               "{areaParaExcluir?.nome}"
             </Text>
-            
+
             <Text style={{ fontSize: 14, color: '#DC2626', marginBottom: 20 }}>
               ⚠️ Esta ação não pode ser desfeita!
             </Text>
-            
+
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
               <TouchableOpacity
                 style={{
@@ -3569,7 +3558,7 @@ export default function MapCityMap() {
               >
                 <Text style={{ color: '#6B7280', fontWeight: '600' }}>Cancelar</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={{
                   backgroundColor: '#DC2626',
@@ -3579,8 +3568,8 @@ export default function MapCityMap() {
                 }}
                 onPress={confirmarExclusaoArea}
               >
-                <Text style={{ 
-                  color: 'white', 
+                <Text style={{
+                  color: 'white',
                   fontWeight: '600'
                 }}>
                   Excluir
@@ -3592,9 +3581,9 @@ export default function MapCityMap() {
       </Modal>
 
       {/* Modal de Exclusão de Marcador (Admin) */}
-      <Modal 
-        visible={!!marcadorParaExcluir} 
-        animationType="fade" 
+      <Modal
+        visible={!!marcadorParaExcluir}
+        animationType="fade"
         transparent={true}
       >
         <View style={{
@@ -3614,19 +3603,19 @@ export default function MapCityMap() {
             <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 15, color: '#DC2626' }}>
               🗑️ Excluir Marcador
             </Text>
-            
+
             <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 10 }}>
               Tem certeza que deseja excluir o marcador:
             </Text>
-            
+
             <Text style={{ fontSize: 16, fontWeight: '600', color: '#1F2937', marginBottom: 20 }}>
               "{marcadorParaExcluir?.nome}"
             </Text>
-            
+
             <Text style={{ fontSize: 14, color: '#DC2626', marginBottom: 20 }}>
               ⚠️ Esta ação não pode ser desfeita!
             </Text>
-            
+
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
               <TouchableOpacity
                 style={{
@@ -3642,7 +3631,7 @@ export default function MapCityMap() {
               >
                 <Text style={{ color: '#6B7280', fontWeight: '600' }}>Cancelar</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={{
                   backgroundColor: '#DC2626',
@@ -3652,8 +3641,8 @@ export default function MapCityMap() {
                 }}
                 onPress={confirmarExclusaoMarcador}
               >
-                <Text style={{ 
-                  color: 'white', 
+                <Text style={{
+                  color: 'white',
                   fontWeight: '600'
                 }}>
                   Excluir
@@ -3763,7 +3752,7 @@ export default function MapCityMap() {
             }}>
               Motivo da denúncia *
             </Text>
-            
+
             {MOTIVOS_DENUNCIA.map((motivo) => (
               <TouchableOpacity
                 key={motivo.value}
@@ -3879,7 +3868,7 @@ export default function MapCityMap() {
                 🚨 Enviar Denúncia
               </Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               onPress={() => setIsDenunciaModalVisible(false)}
               style={{
@@ -3897,6 +3886,43 @@ export default function MapCityMap() {
                 Cancelar
               </Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      {/* Modal para motivo/descrição da área */}
+      <Modal
+        visible={modalMotivoVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalMotivoVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ backgroundColor: 'white', padding: 24, borderRadius: 12, width: '85%' }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>Motivo/Descrição do pedido</Text>
+            <TextInput
+              style={{ borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, padding: 10, minHeight: 60, marginBottom: 16 }}
+              placeholder="Descreva o motivo do pedido da área..."
+              value={motivoArea}
+              onChangeText={setMotivoArea}
+              multiline
+              editable={!finalizarAreaPending}
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
+              <TouchableOpacity
+                style={{ paddingVertical: 8, paddingHorizontal: 18, borderRadius: 8, backgroundColor: '#F3F4F6', marginRight: 8 }}
+                onPress={() => { setModalMotivoVisible(false); setMotivoArea(''); }}
+                disabled={finalizarAreaPending}
+              >
+                <Text style={{ color: '#6B7280', fontWeight: 'bold' }}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ paddingVertical: 8, paddingHorizontal: 18, borderRadius: 8, backgroundColor: '#10B981' }}
+                onPress={confirmarCadastroArea}
+                disabled={finalizarAreaPending}
+              >
+                <Text style={{ color: 'white', fontWeight: 'bold' }}>{finalizarAreaPending ? 'Salvando...' : 'Confirmar'}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>

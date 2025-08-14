@@ -8,6 +8,25 @@ app.use(cors());
 app.use(express.json());
 const multer = require('multer');
 const path = require('path');
+// PUT /admin/areas/:areaId/rejeitar - rejeita uma área
+app.put('/admin/areas/:areaId/rejeitar', async (req, res) => {
+    const { areaId } = req.params;
+    const { motivo_rejeicao } = req.body;
+    try {
+        const result = await db.executarUpdate(
+            "UPDATE areas_responsabilidade SET status = 'rejeitada', motivo_rejeicao = ?, data_aprovacao = NOW() WHERE id = ?",
+            [motivo_rejeicao || null, areaId]
+        );
+        if (result.affectedRows > 0) {
+            res.json({ success: true, id: areaId });
+        } else {
+            res.status(404).json({ error: 'Área não encontrada' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao rejeitar área', details: error.message });
+    }
+});
+
 // Middleware para autenticação de ONG ou admin (token_simulado_ID)
 async function autenticarONGouAdmin(req, res, next) {
     const auth = req.headers['authorization'];
@@ -52,10 +71,10 @@ app.delete('/areas/:id', autenticarONGouAdmin, async (req, res) => {
         }
         // Log detalhado para depuração
         console.log(`[EXCLUIR ÁREA] Tentando excluir área:`, area);
-        // Permitir exclusão apenas se status for pendente ou aprovada
-        if (area.status !== 'pendente' && area.status !== 'aprovada') {
+        // Permitir exclusão apenas se status for pendente, aprovada ou rejeitada
+        if (area.status !== 'pendente' && area.status !== 'aprovada' && area.status !== 'rejeitada') {
             console.error(`[EXCLUIR ÁREA] Status inválido para exclusão. Status: ${area.status}, ID: ${id}`);
-            return res.status(400).json({ error: 'Só é possível excluir áreas pendentes ou aprovadas.' });
+            return res.status(400).json({ error: 'Só é possível excluir áreas pendentes, aprovadas ou rejeitadas.' });
         }
         await db.executarUpdate('DELETE FROM areas_responsabilidade WHERE id = ?', [id]);
         console.log(`[EXCLUIR ÁREA] Área excluída com sucesso. ID: ${id}`);
@@ -153,18 +172,18 @@ app.get('/notificacoes', async (req, res) => {
         } else {
             notificacoes = await db.executarQuery('SELECT * FROM notificacoes_ong');
         }
-                // Converter criada_em para ISO string, mesmo se vier como string
-                notificacoes = notificacoes.map(n => {
-                    let criadaEmISO = n.criada_em;
-                    if (n.criada_em) {
-                        const d = new Date(n.criada_em);
-                        criadaEmISO = isNaN(d.getTime()) ? n.criada_em : d.toISOString();
-                    }
-                    return {
-                        ...n,
-                        criada_em: criadaEmISO
-                    };
-                });
+        // Converter criada_em para ISO string, mesmo se vier como string
+        notificacoes = notificacoes.map(n => {
+            let criadaEmISO = n.criada_em;
+            if (n.criada_em) {
+                const d = new Date(n.criada_em);
+                criadaEmISO = isNaN(d.getTime()) ? n.criada_em : d.toISOString();
+            }
+            return {
+                ...n,
+                criada_em: criadaEmISO
+            };
+        });
         res.json(notificacoes);
     } catch (error) {
         res.status(500).json({ error: 'Erro ao buscar notificações', details: error.message });
@@ -192,7 +211,17 @@ app.put('/admin/areas/:areaId/aprovar', async (req, res) => {
 // GET /admin/areas/pendentes - retorna áreas pendentes de aprovação
 app.get('/admin/areas/pendentes', async (req, res) => {
     try {
-        const areas = await db.executarQuery("SELECT * FROM areas_responsabilidade WHERE status = 'pendente'");
+        // Busca áreas pendentes e faz JOIN para pegar nome da ONG responsável
+        const sql = `
+            SELECT 
+                a.id, a.nome, a.descricao, a.coordenadas, a.ativa, a.status, a.criada_em, a.atualizada_em, 
+                a.data_aprovacao, a.motivo_rejeicao, 
+                u.nome AS ong_nome, u.email AS ong_email
+            FROM areas_responsabilidade a
+            JOIN usuarios u ON a.ong_id = u.id
+            WHERE a.status = 'pendente'
+        `;
+        const areas = await db.executarQuery(sql);
         res.json(areas);
     } catch (error) {
         res.status(500).json({ error: 'Erro ao buscar áreas pendentes', details: error.message });
@@ -301,9 +330,9 @@ app.post('/upload', upload.array('images', 10), (req, res) => {
             filename: file.filename,
             path: '/uploads/' + file.filename
         }));
-    res.status(201).json({ success: true, images: files });
+        res.status(201).json({ success: true, images: files });
     } catch (error) {
-    // Erro no upload de imagens
+        // Erro no upload de imagens
         res.status(500).json({ error: 'Erro ao enviar imagens', details: error.message });
     }
 });
@@ -415,7 +444,7 @@ app.use((req, res, next) => {
 app.get('/lugares', async (req, res) => {
     try {
         const lugares = await db.executarQuery('SELECT * FROM lugares');
-    // Log removido
+        // Log removido
 
         // Garante que latitude/longitude sejam números
         const adaptados = lugares.map(lugar => ({
@@ -424,10 +453,10 @@ app.get('/lugares', async (req, res) => {
             longitude: lugar.longitude !== undefined && lugar.longitude !== null ? Number(lugar.longitude) : null
         }));
 
-    // Log removido
+        // Log removido
         res.json(adaptados);
     } catch (error) {
-    // Erro ao buscar lugares
+        // Erro ao buscar lugares
         res.status(500).json({ error: 'Erro ao buscar lugares', details: error.message });
     }
 });
@@ -449,7 +478,7 @@ app.put('/lugares/:id/resolver', async (req, res) => {
             res.status(404).json({ error: 'Marcador não encontrado' });
         }
     } catch (error) {
-    // Erro ao atualizar marcador
+        // Erro ao atualizar marcador
         res.status(500).json({ error: 'Erro ao atualizar marcador', details: error.message });
     }
 });
@@ -458,7 +487,7 @@ app.get('/areas/publicas', async (req, res) => {
         const areas = await db.executarQuery("SELECT * FROM areas_responsabilidade WHERE status = 'aprovada'");
         res.json(areas);
     } catch (error) {
-    // Erro ao buscar áreas públicas
+        // Erro ao buscar áreas públicas
         res.status(500).json({ error: 'Erro ao buscar áreas públicas', details: error.message });
     }
 });
@@ -466,36 +495,36 @@ app.get('/areas/publicas', async (req, res) => {
 // Rota de teste
 app.get('/test', (req, res) => {
     // Log removido
-    res.json({ 
-        message: 'Servidor funcionando!', 
-        timestamp: new Date().toISOString() 
+    res.json({
+        message: 'Servidor funcionando!',
+        timestamp: new Date().toISOString()
     });
 });
 
 // Rota de validação
 app.post('/validar-documento', (req, res) => {
     // Log removido
-    
+
     try {
         const { documento, tipo } = req.body;
-        
+
         if (!documento) {
             // Log removido
             return res.status(400).json({ error: 'Documento é obrigatório' });
         }
-        
-    // Log removido
-        
+
+        // Log removido
+
         const resultado = ValidadorDocumento.validarDocumento(documento, tipo);
-    // Log removido
-        
+        // Log removido
+
         res.json(resultado);
-        
+
     } catch (error) {
-    // Erro na validação
-        res.status(500).json({ 
+        // Erro na validação
+        res.status(500).json({
             error: 'Erro interno do servidor',
-            details: error.message 
+            details: error.message
         });
     }
 });
@@ -507,86 +536,86 @@ app.post('/validar-documento', (req, res) => {
 // Rota de registro
 app.post('/auth/registro', async (req, res) => {
     // Log removido
-    
+
     try {
         const { nome, email, senha, tipo, documento } = req.body;
-        
+
         // Validação básica dos campos obrigatórios
         if (!nome || !email || !senha || !tipo || !documento) {
             // Log removido
-            return res.status(400).json({ 
+            return res.status(400).json({
                 error: 'Todos os campos são obrigatórios',
                 campos: { nome, email, senha: '***', tipo, documento }
             });
         }
-        
+
         // Validar tipo de usuário
         if (!['usuario', 'ong'].includes(tipo)) {
             // Log removido
-            return res.status(400).json({ 
-                error: 'Tipo deve ser "usuario" ou "ong"' 
+            return res.status(400).json({
+                error: 'Tipo deve ser "usuario" ou "ong"'
             });
         }
-        
+
         // Validar documento baseado no tipo
         const documentoLimpo = documento.replace(/[^\d]/g, '');
         const tipoDocumentoEsperado = tipo === 'usuario' ? 'cpf' : 'cnpj';
         const validacao = ValidadorDocumento.validarDocumento(documentoLimpo);
-        
+
         if (!validacao.valido || validacao.tipo !== tipoDocumentoEsperado) {
             // Log removido
-            return res.status(400).json({ 
+            return res.status(400).json({
                 error: `${tipoDocumentoEsperado.toUpperCase()} inválido para ${tipo}`,
-                validacao 
+                validacao
             });
         }
-        
+
         // Verificar se email já existe
         const emailExistente = await db.buscarUm(
             'SELECT id FROM usuarios WHERE email = ?',
             [email]
         );
-        
+
         if (emailExistente) {
-        // Log removido
-            return res.status(400).json({ 
-                error: 'Email já está cadastrado' 
+            // Log removido
+            return res.status(400).json({
+                error: 'Email já está cadastrado'
             });
         }
-        
+
         // Verificar se documento já existe
         const documentoExistente = await db.buscarUm(
             'SELECT id FROM usuarios WHERE documento = ?',
             [validacao.documentoLimpo]
         );
-        
+
         if (documentoExistente) {
-        // Log removido
-            return res.status(400).json({ 
-                error: 'Documento já está cadastrado' 
+            // Log removido
+            return res.status(400).json({
+                error: 'Documento já está cadastrado'
             });
         }
-        
-    // Log removido
-        
+
+        // Log removido
+
         // Hash da senha
         const senhaHash = await bcrypt.hash(senha, 10);
-        
+
         // Inserir usuário no banco de dados
         const userId = await db.inserir(
             `INSERT INTO usuarios (nome, email, senha, tipo, documento, criado_em) 
              VALUES (?, ?, ?, ?, ?, NOW())`,
             [nome, email, senhaHash, tipo, validacao.documentoLimpo]
         );
-        
+
         // Buscar usuário recém-criado
         const novoUsuario = await db.buscarUm(
             'SELECT id, nome, email, tipo, documento, criado_em FROM usuarios WHERE id = ?',
             [userId]
         );
-        
-    // Log removido
-        
+
+        // Log removido
+
         res.status(201).json({
             success: true,
             message: 'Usuário registrado com sucesso!',
@@ -598,12 +627,12 @@ app.post('/auth/registro', async (req, res) => {
                 documento: validacao.documentoFormatado
             }
         });
-        
+
     } catch (error) {
-    // Erro no registro
-        res.status(500).json({ 
+        // Erro no registro
+        res.status(500).json({
             error: 'Erro interno do servidor',
-            details: error.message 
+            details: error.message
         });
     }
 });
@@ -617,7 +646,7 @@ app.post('/auth/login', async (req, res) => {
             // Log removido
             return res.status(400).json({ error: 'Email e senha são obrigatórios' });
         }
-    // Log removido
+        // Log removido
 
         // Buscar usuário real no banco de dados
         const usuario = await db.buscarUm(
@@ -643,7 +672,7 @@ app.post('/auth/login', async (req, res) => {
             email: usuario.email,
             tipo: usuario.tipo
         };
-    // Log removido
+        // Log removido
         res.json({
             success: true,
             message: 'Login realizado com sucesso!',
@@ -651,7 +680,7 @@ app.post('/auth/login', async (req, res) => {
             token: 'token_simulado_' + usuario.id
         });
     } catch (error) {
-    // Erro no login
+        // Erro no login
         res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
     }
 });
@@ -684,7 +713,7 @@ app.post('/denuncias', async (req, res) => {
         const result = await db.inserir(sql, params);
         res.json({ success: true, denuncia_id: result });
     } catch (error) {
-    // Erro ao registrar denúncia
+        // Erro ao registrar denúncia
         res.status(500).json({ error: 'Erro ao registrar denúncia', details: error.message });
     }
 });

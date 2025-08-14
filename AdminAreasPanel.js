@@ -22,9 +22,12 @@ const AdminAreasPanel = ({ visible, onClose, onAreaUpdate }) => {
   const carregarDados = async () => {
     setLoading(true);
     try {
-      const todas = await adminAreasAPI.listarAreas();
-      setTodasAreas(todas);
-      setAreasPendentes(todas.filter(area => (area.status || '').toLowerCase().trim() === 'pendente'));
+  // Buscar áreas pendentes diretamente da API correta
+  const pendentes = await adminAreasAPI.buscarAreasPendentes();
+  setAreasPendentes(pendentes);
+  // Buscar todas as áreas (caso necessário para outra aba)
+  const todas = await adminAreasAPI.listarAreas ? await adminAreasAPI.listarAreas() : [];
+  setTodasAreas(todas);
     } catch (error) {
       Alert.alert('Erro', 'Erro ao carregar áreas: ' + error.message);
     } finally {
