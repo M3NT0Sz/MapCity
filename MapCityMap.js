@@ -1049,18 +1049,50 @@ export default function MapCityMap() {
     }
   }, [usuario]);
 
+
   // Carregar notificações para ONGs
   const carregarNotificacoes = useCallback(async () => {
     if (!usuario || usuario.tipo !== 'ong') return;
-
     try {
       console.log('🔔 Carregando notificações para ONG:', usuario.id);
-      const data = await areasAPI.buscarNotificacoes();
+      const data = await areasAPI.buscarNotificacoes(usuario.id);
       setNotificacoes(data);
     } catch (error) {
       console.error('❌ Erro ao carregar notificações:', error);
     }
   }, [usuario]);
+
+  // Carregar denúncias para ONGs (apenas das suas áreas)
+  const [denuncias, setDenuncias] = useState([]);
+  const carregarDenuncias = useCallback(async () => {
+    if (!usuario || usuario.tipo !== 'ong') return;
+    try {
+      // Busca todas as denúncias (backend já filtra por ong_id se suportado)
+      const response = await import('./api');
+      const { denunciasAPI } = response;
+  const todasDenuncias = await denunciasAPI.listarDenuncias(usuario.token, usuario.id);
+      // Filtra no frontend: só denúncias de marcadores dentro das áreas da ONG
+      const areaIds = areas.map(a => a.id);
+      const denunciasFiltradas = todasDenuncias.filter(denuncia => {
+        // O backend pode já filtrar, mas garantimos aqui
+        // denuncia.area_id ou denuncia.marcador.area_ong_id
+        if (denuncia.marcador && denuncia.marcador.area_ong_id) {
+          return areaIds.includes(denuncia.marcador.area_ong_id);
+        }
+        return false;
+      });
+      setDenuncias(denunciasFiltradas);
+    } catch (error) {
+      console.error('❌ Erro ao carregar denúncias:', error);
+    }
+  }, [usuario, areas]);
+
+  // Atualizar denúncias sempre que áreas ou usuário mudarem
+  React.useEffect(() => {
+    if (usuario && usuario.tipo === 'ong') {
+      carregarDenuncias();
+    }
+  }, [usuario, areas, carregarDenuncias]);
 
   // ========= FUNÇÕES DE ÁREA PARA ONGS =========
 
@@ -1122,7 +1154,6 @@ export default function MapCityMap() {
     }
   };
 
-  // Função para excluir conta do usuário
   const excluirConta = async () => {
     Alert.alert(
       'Excluir Conta',
@@ -1423,7 +1454,13 @@ export default function MapCityMap() {
 
       if (selectedImages.length > 0) {
         console.log('📤 Fazendo upload de', selectedImages.length, 'imagem(s)...');
-        imagePaths = await uploadImages(selectedImages);
+        const uploadResult = await uploadImages(selectedImages);
+        // Garante que imagePaths seja array de strings (paths)
+        if (Array.isArray(uploadResult)) {
+          imagePaths = uploadResult.map(img => typeof img === 'object' && img.path ? img.path : img).filter(Boolean);
+        } else {
+          imagePaths = [];
+        }
       }
 
       // Verificar se o marcador está dentro de uma área de ONG
@@ -1439,7 +1476,8 @@ export default function MapCityMap() {
         imagem: imagePaths,
         // Adicionar informações da ONG se estiver em uma área
         area_ong_id: ongResponsavel?.id || null,
-        area_ong_nome: ongResponsavel?.ongNome || null
+        area_ong_nome: ongResponsavel?.ongNome || null,
+        usuario_id: usuario?.id || null // Adiciona o ID do usuário logado
       };
       console.log('🏢 ONG responsável:', ongResponsavel);
       const novoLugar = await lugaresAPI.criar(dadosLugar);
@@ -2087,25 +2125,6 @@ export default function MapCityMap() {
                 </Text>
               </TouchableOpacity>
             )}
-
-            {/* Botão de configurações para todos */}
-            <TouchableOpacity
-              style={{
-                backgroundColor: modernTheme.colors.border,
-                paddingHorizontal: modernTheme.spacing.md,
-                paddingVertical: modernTheme.spacing.sm,
-                borderRadius: modernTheme.borderRadius.md,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: modernTheme.spacing.xs
-              }}
-              onPress={excluirConta}
-            >
-              <Text style={{ color: modernTheme.colors.text, fontSize: 16 }}>🗑️</Text>
-              <Text style={{ color: modernTheme.colors.text, fontWeight: 'bold' }}>
-                Excluir Conta
-              </Text>
-            </TouchableOpacity>
           </View>
         )}
       </View>

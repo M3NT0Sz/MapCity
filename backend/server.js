@@ -133,17 +133,21 @@ app.put('/denuncias/:id/rejeitar', async (req, res) => {
     const { id } = req.params;
     const { observacoes } = req.body;
     try {
+        console.log(`[DENUNCIA] Tentando rejeitar denúncia id=${id} com observacoes:`, observacoes);
         const result = await db.executarUpdate(
             "UPDATE denuncias SET status = 'rejeitada', observacoes = ? , processado_em = NOW() WHERE id = ?",
             [observacoes || null, id]
         );
         if (result.affectedRows > 0) {
+            console.log(`[DENUNCIA] Denúncia id=${id} rejeitada com sucesso.`);
             res.json({ success: true, id });
         } else {
-            res.status(404).json({ error: 'Denúncia não encontrada' });
+            console.warn(`[DENUNCIA] Denúncia id=${id} não encontrada para rejeição.`);
+            res.status(404).json({ error: 'Denúncia não encontrada', id });
         }
     } catch (error) {
-        res.status(500).json({ error: 'Erro ao rejeitar denúncia', details: error.message });
+        console.error(`[DENUNCIA] Erro ao rejeitar denúncia id=${id}:`, error.message);
+        res.status(500).json({ error: 'Erro ao rejeitar denúncia', details: error.message, id });
     }
 });
 
@@ -326,7 +330,12 @@ app.delete('/lugares/:id', async (req, res) => {
 // Configuração do multer para salvar arquivos na pasta uploads/
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, path.join(__dirname, 'uploads'));
+        const uploadPath = path.join(__dirname, 'uploads');
+        const fs = require('fs');
+        if (!fs.existsSync(uploadPath)) {
+            fs.mkdirSync(uploadPath, { recursive: true });
+        }
+        cb(null, uploadPath);
     },
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -358,7 +367,7 @@ app.post('/upload', upload.array('images', 10), (req, res) => {
 // POST /lugares - cria um novo marcador
 app.post('/lugares', async (req, res) => {
     try {
-        const { nome, descricao, tipo, latitude, longitude, imagem } = req.body;
+        const { nome, descricao, tipo, latitude, longitude, imagem, usuario_id, area_ong_id } = req.body;
         if (!nome || !tipo || latitude === undefined || longitude === undefined) {
             return res.status(400).json({ error: 'Campos obrigatórios: nome, tipo, latitude, longitude' });
         }
@@ -372,74 +381,54 @@ app.post('/lugares', async (req, res) => {
         }
         let imagemStr = imagensArray && imagensArray.length > 0 ? JSON.stringify(imagensArray) : null;
 
-        // Inserir marcador
-        const sql = `INSERT INTO lugares (nome, descricao, tipo, latitude, longitude, imagem, criado_em)
-                     VALUES (?, ?, ?, ?, ?, ?, NOW())`;
-        const params = [nome, descricao || null, tipo, latitude, longitude, imagemStr];
-        const id = await db.inserir(sql, params);
+        let areaIdToUse = area_ong_id || null;
 
-
-        // Buscar áreas aprovadas com JOIN para pegar nome da ONG
-        const areas = await db.executarQuery(`
-            SELECT a.*, u.nome AS ong_nome
-            FROM areas_responsabilidade a
-            JOIN usuarios u ON a.ong_id = u.id
-            WHERE a.status = 'aprovada'
-        `);
-        let areaEncontrada = null;
-        for (const area of areas) {
-            try {
-                const coords = JSON.parse(area.coordenadas);
-                if (Array.isArray(coords) && coords.length >= 3) {
-                    // Função de ponto no polígono
-                    const pontoNoPoligono = (lat, lng, poligono) => {
-                        let dentro = false;
-                        for (let i = 0, j = poligono.length - 1; i < poligono.length; j = i++) {
-                            const xi = parseFloat(poligono[i].lat), yi = parseFloat(poligono[i].lng);
-                            const xj = parseFloat(poligono[j].lat), yj = parseFloat(poligono[j].lng);
-                            const intersect = ((yi > lng) !== (yj > lng)) &&
-                                (lat < (xj - xi) * (lng - yi) / (yj - yi + 0.0000001) + xi);
-                            if (intersect) dentro = !dentro;
+        // Se não veio area_ong_id, tenta calcular
+        if (!areaIdToUse) {
+            // Buscar áreas aprovadas com JOIN para pegar nome da ONG
+            const areas = await db.executarQuery(`
+                SELECT a.*, u.nome AS ong_nome
+                FROM areas_responsabilidade a
+                JOIN usuarios u ON a.ong_id = u.id
+                WHERE a.status = 'aprovada'
+            `);
+            for (const area of areas) {
+                try {
+                    const coords = JSON.parse(area.coordenadas);
+                    if (Array.isArray(coords) && coords.length >= 3) {
+                        // Função de ponto no polígono
+                        const pontoNoPoligono = (lat, lng, poligono) => {
+                            let dentro = false;
+                            for (let i = 0, j = poligono.length - 1; i < poligono.length; j = i++) {
+                                const xi = parseFloat(poligono[i].lat), yi = parseFloat(poligono[i].lng);
+                                const xj = parseFloat(poligono[j].lat), yj = parseFloat(poligono[j].lng);
+                                const intersect = ((yi > lng) !== (yj > lng)) &&
+                                    (lat < (xj - xi) * (lng - yi) / (yj - yi + 0.0000001) + xi);
+                                if (intersect) dentro = !dentro;
+                            }
+                            return dentro;
+                        };
+                        if (pontoNoPoligono(Number(latitude), Number(longitude), coords)) {
+                            areaIdToUse = area.ong_id;
+                            break;
                         }
-                        return dentro;
-                    };
-                    if (pontoNoPoligono(Number(latitude), Number(longitude), coords)) {
-                        areaEncontrada = area;
-                        break;
                     }
-                }
-            } catch (e) { /* ignora erro de parse */ }
-        }
-
-        if (areaEncontrada) {
-            // Log temporário para depuração
-            console.log('[NOTIFICAÇÃO] Tentando inserir notificação:', {
-                ong_id: areaEncontrada.ong_id,
-                area_id: areaEncontrada.id,
-                lugar_id: id,
-                tipo: 'novo_marcador',
-                titulo: 'Novo marcador na sua área',
-                mensagem: `Um novo marcador foi criado dentro da área "${areaEncontrada.nome}".`,
-                ong_nome: areaEncontrada.ong_nome
-            });
-            try {
-                await db.inserir(
-                    `INSERT INTO notificacoes_ong (ong_id, area_id, lugar_id, tipo, titulo, mensagem) VALUES (?, ?, ?, ?, ?, ?)`,
-                    [
-                        areaEncontrada.ong_id,
-                        areaEncontrada.id,
-                        id,
-                        'novo_marcador',
-                        'Novo marcador na sua área',
-                        `Um novo marcador foi criado dentro da área "${areaEncontrada.nome}".`
-                    ]
-                );
-            } catch (notErr) {
-                console.error('[NOTIFICAÇÃO] Erro ao inserir notificação:', notErr.message);
-                res.status(500).json({ error: 'Erro ao criar notificação', details: notErr.message });
-                return;
+                } catch (e) { /* ignora erro de parse */ }
             }
         }
+
+        // Inserir marcador
+        let sql, params;
+        if (areaIdToUse) {
+            sql = `INSERT INTO lugares (nome, descricao, tipo, latitude, longitude, imagem, area_ong_id, usuario_id, criado_em)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`;
+            params = [nome, descricao || null, tipo, latitude, longitude, imagemStr, areaIdToUse, usuario_id || null];
+        } else {
+            sql = `INSERT INTO lugares (nome, descricao, tipo, latitude, longitude, imagem, usuario_id, criado_em)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`;
+            params = [nome, descricao || null, tipo, latitude, longitude, imagemStr, usuario_id || null];
+        }
+        const id = await db.inserir(sql, params);
 
         res.status(201).json({ success: true, id });
     } catch (error) {
@@ -729,11 +718,39 @@ app.post('/denuncias', async (req, res) => {
             return res.status(404).json({ error: 'Marcador não encontrado' });
         }
 
-        // Buscar ONG responsável (opcional)
+        // Buscar ONG responsável (garantir preenchimento)
         let ong_responsavel_id = null;
         if (marcador.area_ong_id) {
             ong_responsavel_id = marcador.area_ong_id;
+        } else {
+            // Fallback: tentar buscar área pelo ponto do marcador
+            const areas = await db.executarQuery(`SELECT * FROM areas_responsabilidade WHERE status = 'aprovada'`);
+            for (const area of areas) {
+                try {
+                    const coords = JSON.parse(area.coordenadas);
+                    if (Array.isArray(coords) && coords.length >= 3) {
+                        const pontoNoPoligono = (lat, lng, poligono) => {
+                            let dentro = false;
+                            for (let i = 0, j = poligono.length - 1; i < poligono.length; j = i++) {
+                                const xi = parseFloat(poligono[i].lat), yi = parseFloat(poligono[i].lng);
+                                const xj = parseFloat(poligono[j].lat), yj = parseFloat(poligono[j].lng);
+                                const intersect = ((yi > marcador.longitude) !== (yj > marcador.longitude)) &&
+                                    (marcador.latitude < (xj - xi) * (marcador.longitude - yi) / (yj - yi + 0.0000001) + xi);
+                                if (intersect) dentro = !dentro;
+                            }
+                            return dentro;
+                        };
+                        if (pontoNoPoligono(Number(marcador.latitude), Number(marcador.longitude), coords)) {
+                            ong_responsavel_id = area.ong_id;
+                            break;
+                        }
+                    }
+                } catch (e) { /* ignora erro de parse */ }
+            }
         }
+
+        // Log para depuração
+        console.log('[DENUNCIA] Criando denúncia para marcador', marcador_id, 'ONG responsável:', ong_responsavel_id);
 
         // Buscar autor do marcador (usuário que criou)
         const autor_marcador_id = marcador.usuario_id || 1; // fallback para admin/teste
@@ -741,7 +758,7 @@ app.post('/denuncias', async (req, res) => {
         const sql = `INSERT INTO denuncias (marcador_id, denunciante_id, autor_marcador_id, ong_responsavel_id, motivo, descricao) VALUES (?, ?, ?, ?, ?, ?)`;
         const params = [marcador_id, denunciante_id, autor_marcador_id, ong_responsavel_id, motivo, descricao || null];
         const result = await db.inserir(sql, params);
-        res.json({ success: true, denuncia_id: result });
+        res.json({ success: true, denuncia_id: result, ong_responsavel_id } );
     } catch (error) {
         // Erro ao registrar denúncia
         res.status(500).json({ error: 'Erro ao registrar denúncia', details: error.message });

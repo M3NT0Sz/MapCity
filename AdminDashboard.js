@@ -80,8 +80,12 @@ const AdminDashboard = ({ visible, onClose, onSelectMarcador, onSelectArea }) =>
   const carregarDenuncias = async () => {
     try {
       const token = localStorage.getItem('mapcity_token');
-      const response = await denunciasAPI.listarDenuncias(token);
-      
+      let response;
+      if (usuario.tipo === 'ong') {
+        response = await denunciasAPI.listarDenuncias(token, usuario.id);
+      } else {
+        response = await denunciasAPI.listarDenuncias(token);
+      }
       // Backend retorna um array diretamente, não um objeto com propriedade denuncias
       setDenuncias(Array.isArray(response) ? response : (response.denuncias || []));
     } catch (error) {
@@ -239,17 +243,15 @@ const AdminDashboard = ({ visible, onClose, onSelectMarcador, onSelectArea }) =>
   };
 
   // Funções para denúncias
-  const processarDenuncia = async (denunciaId, acao) => {
+  const processarDenuncia = async (denunciaId, acao, obs = '') => {
     try {
       setLoading(true);
       const token = localStorage.getItem('mapcity_token');
-      await denunciasAPI.processarDenuncia(denunciaId, acao, observacoes, token);
-      
+      await denunciasAPI.processarDenuncia(denunciaId, acao, obs, token);
       Alert.alert(
         'Sucesso', 
         `Denúncia ${acao === 'aceitar' ? 'aceita' : 'rejeitada'} com sucesso`
       );
-      
       setDenunciaSelected(null);
       setObservacoes('');
       await carregarDenuncias();
@@ -536,7 +538,6 @@ const AdminDashboard = ({ visible, onClose, onSelectMarcador, onSelectArea }) =>
                 <Text style={{ ...styles.buttonText, marginRight: 6 }}>✅</Text>
                 <Text style={styles.buttonText}>Aceitar</Text>
               </TouchableOpacity>
-              
               <TouchableOpacity 
                 style={{
                   ...styles.button,
@@ -545,11 +546,55 @@ const AdminDashboard = ({ visible, onClose, onSelectMarcador, onSelectArea }) =>
                   alignItems: 'center',
                   paddingHorizontal: 16,
                 }}
-                onPress={() => setDenunciaSelected(denuncia)}
+                onPress={() => {
+                  setDenunciaSelected(denuncia);
+                  setObservacoes('');
+                }}
               >
                 <Text style={{ ...styles.buttonText, marginRight: 6 }}>❌</Text>
                 <Text style={styles.buttonText}>Rejeitar</Text>
               </TouchableOpacity>
+      {/* Modal para rejeitar denúncia */}
+      <Modal
+        visible={!!denunciaSelected}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDenunciaSelected(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Rejeitar Denúncia</Text>
+            <TextInput
+              style={styles.textArea}
+              placeholder="Motivo/observação da rejeição (opcional)"
+              value={observacoes}
+              onChangeText={setObservacoes}
+              multiline
+              numberOfLines={4}
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.button, styles.buttonSecondary]}
+                onPress={() => {
+                  setDenunciaSelected(null);
+                  setObservacoes('');
+                }}
+              >
+                <Text style={styles.buttonText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.button, styles.buttonDanger]}
+                onPress={() => {
+                  if (!denunciaSelected) return;
+                  processarDenuncia(denunciaSelected.id, 'rejeitar', observacoes);
+                }}
+              >
+                <Text style={styles.buttonText}>Rejeitar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
             </View>
           </View>
         ))}

@@ -298,9 +298,10 @@ export const areasAPI = {
   },
 
   // Buscar notificações
-  buscarNotificacoes: async () => {
+  buscarNotificacoes: async (ongId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/notificacoes`, {
+      const url = ongId ? `${API_BASE_URL}/notificacoes?ong_id=${ongId}` : `${API_BASE_URL}/notificacoes`;
+      const response = await fetch(url, {
         method: 'GET',
         headers: getHeaders(),
       });
@@ -582,8 +583,12 @@ export const denunciasAPI = {
   },
 
   // Listar denúncias (Admin/ONG)
-  listarDenuncias: async (token) => {
-    const response = await fetch(`${API_BASE_URL}/denuncias`, {
+  listarDenuncias: async (token, ongId = null) => {
+    let url = `${API_BASE_URL}/denuncias`;
+    if (ongId) {
+      url += `?ong_id=${ongId}`;
+    }
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`
