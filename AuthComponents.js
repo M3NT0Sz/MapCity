@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Modal, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Modal, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai';
 
 // Contexto de autenticação
 export const AuthContext = React.createContext();
@@ -110,6 +111,7 @@ export function useAuth() {
 export function LoginModal({ visible, onClose, onSwitchToRegister }) {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [mostrarSenha, setMostrarSenha] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const { login } = useAuth();
 
@@ -148,13 +150,21 @@ export function LoginModal({ visible, onClose, onSwitchToRegister }) {
             autoCapitalize="none"
           />
           
-          <TextInput
-            style={styles.input}
-            placeholder="Senha"
-            value={senha}
-            onChangeText={setSenha}
-            secureTextEntry
-          />
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={[styles.input, { flex: 1, marginBottom: 0 }]}
+              placeholder="Senha"
+              value={senha}
+              onChangeText={setSenha}
+              secureTextEntry={!mostrarSenha}
+            />
+            <TouchableOpacity 
+              style={styles.eyeButton}
+              onPress={() => setMostrarSenha(!mostrarSenha)}
+            >
+              {mostrarSenha ? <AiOutlineEye size={20} color="#666" /> : <AiOutlineEyeInvisible size={20} color="#666" />}
+            </TouchableOpacity>
+          </View>
           
           <TouchableOpacity 
             style={[styles.button, carregando && styles.buttonDisabled]} 
@@ -198,6 +208,8 @@ export function RegisterModal({ visible, onClose, onSwitchToLogin }) {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
+  const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [mostrarConfirmarSenha, setMostrarConfirmarSenha] = useState(false);
   const [tipo, setTipo] = useState('usuario');
   const [documento, setDocumento] = useState('');
   const [razaoSocial, setRazaoSocial] = useState('');
@@ -342,32 +354,37 @@ export function RegisterModal({ visible, onClose, onSwitchToLogin }) {
         if (data.requer_verificacao) {
           mensagem += '\n\nSua ONG foi cadastrada e está aguardando verificação do documento pelos administradores. Você poderá fazer login após a aprovação.';
         } else {
-          mensagem += ' Você pode fazer login agora.';
+          mensagem += ' Redirecionando para o login...';
         }
 
-        Alert.alert(
-          'Sucesso',
-          mensagem,
-          [
+        // Limpar campos
+        setNome('');
+        setEmail('');
+        setSenha('');
+        setConfirmarSenha('');
+        setTipo('usuario');
+        setDocumento('');
+        setRazaoSocial('');
+        setDocumentoValido(null);
+
+        if (data.requer_verificacao) {
+          // Se requer verificação, mostrar alerta e depois fechar
+          Alert.alert('Sucesso', mensagem, [
             {
               text: 'OK',
               onPress: () => {
-                // Limpar campos
-                setNome('');
-                setEmail('');
-                setSenha('');
-                setConfirmarSenha('');
-                setTipo('usuario');
-                setDocumento('');
-                setRazaoSocial('');
-                setDocumentoValido(null);
-                // Fechar modal de registro e abrir login
                 onClose();
-                onSwitchToLogin();
               }
             }
-          ]
-        );
+          ]);
+        } else {
+          // Se não requer verificação, mostrar mensagem rápida e redirecionar para login
+          Alert.alert('Sucesso', mensagem);
+          setTimeout(() => {
+            onClose();
+            onSwitchToLogin();
+          }, 1500); // Aguarda 1.5 segundos antes de redirecionar
+        }
       } else {
         // Mensagens de erro mais específicas
         let mensagemErro = data.error || 'Erro ao criar conta';
@@ -394,146 +411,177 @@ export function RegisterModal({ visible, onClose, onSwitchToLogin }) {
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.modalOverlay}>
-        <View style={styles.loginContainer}>
-          <Text style={styles.loginTitle}>Criar Conta - MapCity</Text>
-          
-          <TextInput
-            style={styles.input}
-            placeholder="Nome completo"
-            value={nome}
-            onChangeText={setNome}
-            autoCapitalize="words"
-          />
-          
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-          
-          <TextInput
-            style={styles.input}
-            placeholder="Senha (mínimo 6 caracteres)"
-            value={senha}
-            onChangeText={setSenha}
-            secureTextEntry
-          />
-          
-          <TextInput
-            style={styles.input}
-            placeholder="Confirmar senha"
-            value={confirmarSenha}
-            onChangeText={setConfirmarSenha}
-            secureTextEntry
-          />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ width: '100%', alignItems: 'center', flex: 1 }}
+        >
+          <View style={styles.scrollContainer}>
+            <ScrollView
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={styles.loginContainer}>
+                <Text style={styles.loginTitle}>Criar Conta - MapCity</Text>
+                
+                <TextInput
+                  style={styles.input}
+                  placeholder="Nome completo"
+                  value={nome}
+                  onChangeText={setNome}
+                  autoCapitalize="words"
+                />
+                
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+                
+                <View style={styles.inputContainer}>
+                  <TextInput
+                    style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                    placeholder="Senha (mínimo 6 caracteres)"
+                    value={senha}
+                    onChangeText={setSenha}
+                    secureTextEntry={!mostrarSenha}
+                  />
+                  <TouchableOpacity 
+                    style={styles.eyeButton}
+                    onPress={() => setMostrarSenha(!mostrarSenha)}
+                  >
+                    {mostrarSenha ? <AiOutlineEye size={20} color="#666" /> : <AiOutlineEyeInvisible size={20} color="#666" />}
+                  </TouchableOpacity>
+                </View>
+                
+                <View style={styles.inputContainer}>
+                  <TextInput
+                    style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                    placeholder="Confirmar senha"
+                    value={confirmarSenha}
+                    onChangeText={setConfirmarSenha}
+                    secureTextEntry={!mostrarConfirmarSenha}
+                  />
+                  <TouchableOpacity 
+                    style={styles.eyeButton}
+                    onPress={() => setMostrarConfirmarSenha(!mostrarConfirmarSenha)}
+                  >
+                    {mostrarConfirmarSenha ? <AiOutlineEye size={20} color="#666" /> : <AiOutlineEyeInvisible size={20} color="#666" />}
+                  </TouchableOpacity>
+                </View>
 
-          <View style={styles.tipoContainer}>
-            <Text style={styles.tipoLabel}>Tipo de conta:</Text>
-            <View style={styles.tipoOptions}>
-              <TouchableOpacity 
-                style={[styles.tipoOption, tipo === 'usuario' && styles.tipoOptionSelected]}
-                onPress={() => {
-                  setTipo('usuario');
-                  setDocumento('');
-                  setRazaoSocial('');
-                  setDocumentoValido(null);
-                }}
-              >
-                <Text style={[styles.tipoOptionText, tipo === 'usuario' && styles.tipoOptionTextSelected]}>
-                  👤 Usuário
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.tipoOption, tipo === 'ong' && styles.tipoOptionSelected]}
-                onPress={() => setTipo('ong')}
-              >
-                <Text style={[styles.tipoOptionText, tipo === 'ong' && styles.tipoOptionTextSelected]}>
-                  🏢 ONG
-                </Text>
-              </TouchableOpacity>
-            </View>
+                {/* Campo de documento - CPF para usuários, CNPJ para ONGs */}
+                <View style={styles.documentoContainer}>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      documentoValido === null ? {} :
+                      documentoValido.valido ? styles.inputValid : styles.inputInvalid
+                    ]}
+                    placeholder={tipo === 'ong' ? "CNPJ da ONG" : "CPF do usuário"}
+                    value={documento}
+                    onChangeText={handleDocumentoChange}
+                    keyboardType="numeric"
+                    maxLength={18}
+                  />
+                  {documentoValido && (
+                    <Text style={[
+                      styles.validationText,
+                      documentoValido.valido ? styles.validationSuccess : styles.validationError
+                    ]}>
+                      {documentoValido.valido 
+                        ? `✅ ${documentoValido.tipo?.toUpperCase()} válido` 
+                        : `❌ ${documentoValido.erro}`
+                      }
+                    </Text>
+                  )}
+                </View>
+
+                {/* Campos específicos para ONG */}
+                {tipo === 'ong' && (
+                  <>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Razão Social da ONG"
+                      value={razaoSocial}
+                      onChangeText={setRazaoSocial}
+                      autoCapitalize="words"
+                    />
+                  </>
+                )}
+
+                <View style={styles.tipoContainer}>
+                  <Text style={styles.tipoLabel}>Tipo de conta:</Text>
+                  <View style={styles.tipoOptions}>
+                    <TouchableOpacity 
+                      style={[styles.tipoOption, tipo === 'usuario' && styles.tipoOptionSelected]}
+                      onPress={() => {
+                        setTipo('usuario');
+                        setDocumento('');
+                        setRazaoSocial('');
+                        setDocumentoValido(null);
+                      }}
+                    >
+                      <Text style={[styles.tipoOptionText, tipo === 'usuario' && styles.tipoOptionTextSelected]}>
+                        👤 Usuário
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[styles.tipoOption, tipo === 'ong' && styles.tipoOptionSelected]}
+                      onPress={() => setTipo('ong')}
+                    >
+                      <Text style={[styles.tipoOptionText, tipo === 'ong' && styles.tipoOptionTextSelected]}>
+                        🏢 ONG
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                
+
+                {/* Informações sobre verificação de documento */}
+                <View style={styles.ongInfo}>
+                  <Text style={styles.ongInfoTitle}>ℹ️ Informações Importantes:</Text>
+                  <Text style={styles.ongInfoText}>
+                    • {tipo === 'ong' ? 'ONGs usam CNPJ' : 'Usuários usam CPF'}
+                  </Text>
+                  <Text style={styles.ongInfoText}>
+                    • O documento será verificado pelos administradores
+                  </Text>
+                  {tipo === 'ong' && (
+                    <Text style={styles.ongInfoText}>
+                      • Você poderá fazer login após a aprovação
+                    </Text>
+                  )}
+                  <Text style={styles.ongInfoText}>
+                    • Mantenha os dados atualizados e verdadeiros
+                  </Text>
+                </View>
+                
+                <TouchableOpacity 
+                  style={[styles.button, carregando && styles.buttonDisabled]} 
+                  onPress={handleRegister}
+                  disabled={carregando}
+                >
+                  <Text style={styles.buttonText}>
+                    {carregando ? 'Criando conta...' : 'Criar Conta'}
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.linkButton} onPress={onSwitchToLogin}>
+                  <Text style={styles.linkButtonText}>Já tem uma conta? Faça login</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+                  <Text style={styles.closeButtonText}>Cancelar</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
-
-          {/* Campo de documento - CPF para usuários, CNPJ para ONGs */}
-          <View style={styles.documentoContainer}>
-            <TextInput
-              style={[
-                styles.input,
-                documentoValido === null ? {} :
-                documentoValido.valido ? styles.inputValid : styles.inputInvalid
-              ]}
-              placeholder={tipo === 'ong' ? "CNPJ da ONG" : "CPF do usuário"}
-              value={documento}
-              onChangeText={handleDocumentoChange}
-              keyboardType="numeric"
-              maxLength={18}
-            />
-            {documentoValido && (
-              <Text style={[
-                styles.validationText,
-                documentoValido.valido ? styles.validationSuccess : styles.validationError
-              ]}>
-                {documentoValido.valido 
-                  ? `✅ ${documentoValido.tipo?.toUpperCase()} válido` 
-                  : `❌ ${documentoValido.erro}`
-                }
-              </Text>
-            )}
-          </View>
-
-          {/* Campos específicos para ONG */}
-          {tipo === 'ong' && (
-            <>
-              <TextInput
-                style={styles.input}
-                placeholder="Razão Social da ONG"
-                value={razaoSocial}
-                onChangeText={setRazaoSocial}
-                autoCapitalize="words"
-              />
-            </>
-          )}
-
-          {/* Informações sobre verificação de documento */}
-          <View style={styles.ongInfo}>
-            <Text style={styles.ongInfoTitle}>ℹ️ Informações Importantes:</Text>
-            <Text style={styles.ongInfoText}>
-              • {tipo === 'ong' ? 'ONGs usam CNPJ' : 'Usuários usam CPF'}
-            </Text>
-            <Text style={styles.ongInfoText}>
-              • O documento será verificado pelos administradores
-            </Text>
-            {tipo === 'ong' && (
-              <Text style={styles.ongInfoText}>
-                • Você poderá fazer login após a aprovação
-              </Text>
-            )}
-            <Text style={styles.ongInfoText}>
-              • Mantenha os dados atualizados e verdadeiros
-            </Text>
-          </View>
-          
-          <TouchableOpacity 
-            style={[styles.button, carregando && styles.buttonDisabled]} 
-            onPress={handleRegister}
-            disabled={carregando}
-          >
-            <Text style={styles.buttonText}>
-              {carregando ? 'Criando conta...' : 'Criar Conta'}
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.linkButton} onPress={onSwitchToLogin}>
-            <Text style={styles.linkButtonText}>Já tem uma conta? Faça login</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Text style={styles.closeButtonText}>Cancelar</Text>
-          </TouchableOpacity>
-        </View>
+        </KeyboardAvoidingView>
       </View>
     </Modal>
   );
@@ -583,12 +631,26 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'center',
   },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    width: '100%',
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: 12,
+    height: '100%',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
   loginContainer: {
     backgroundColor: 'white',
     padding: 20,
     borderRadius: 10,
-    width: '90%',
+    width: '95%',
     maxWidth: 400,
+    alignSelf: 'center',
   },
   loginTitle: {
     fontSize: 24,
@@ -764,5 +826,17 @@ const styles = {
     fontSize: 12,
     color: '#1976D2',
     marginBottom: 4,
+  },
+  scrollContainer: {
+    flex: 1,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 30,
   },
 };
