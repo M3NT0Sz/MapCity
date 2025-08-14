@@ -204,6 +204,7 @@ export function LoginModal({ visible, onClose, onSwitchToRegister }) {
 
 // Componente de Registro
 export function RegisterModal({ visible, onClose, onSwitchToLogin }) {
+  const { login } = useAuth();
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -267,17 +268,21 @@ export function RegisterModal({ visible, onClose, onSwitchToLogin }) {
   };
 
   const handleRegister = async () => {
+    console.log('handleRegister chamado', { nome, email, senha, confirmarSenha, tipo, documento, razaoSocial, documentoValido });
     if (!nome || !email || !senha || !confirmarSenha) {
+      console.log('Validação falhou: campos obrigatórios vazios');
       Alert.alert('Erro', 'Por favor, preencha todos os campos');
       return;
     }
 
     if (senha !== confirmarSenha) {
+      console.log('Validação falhou: senhas não coincidem');
       Alert.alert('Erro', 'As senhas não coincidem');
       return;
     }
 
     if (senha.length < 6) {
+      console.log('Validação falhou: senha curta');
       Alert.alert('Erro', 'A senha deve ter pelo menos 6 caracteres');
       return;
     }
@@ -285,41 +290,49 @@ export function RegisterModal({ visible, onClose, onSwitchToLogin }) {
     // Validações específicas por tipo
     if (tipo === 'ong') {
       if (!documento) {
+        console.log('Validação falhou: CNPJ vazio');
         Alert.alert('Erro', 'CNPJ é obrigatório para ONGs');
         return;
       }
 
       if (!documentoValido || !documentoValido.valido) {
+        console.log('Validação falhou: CNPJ inválido', documentoValido);
         Alert.alert('Erro', documentoValido?.erro || 'CNPJ inválido');
         return;
       }
 
       if (documentoValido.tipo !== 'cnpj') {
+        console.log('Validação falhou: ONG usando CPF');
         Alert.alert('Erro', 'ONGs devem usar CNPJ, não CPF');
         return;
       }
 
       if (!razaoSocial) {
+        console.log('Validação falhou: Razão social vazia');
         Alert.alert('Erro', 'Razão social é obrigatória para ONGs');
         return;
       }
     } else if (tipo === 'usuario') {
       if (!documento) {
+        console.log('Validação falhou: CPF vazio');
         Alert.alert('Erro', 'CPF é obrigatório para usuários');
         return;
       }
 
       if (!documentoValido || !documentoValido.valido) {
+        console.log('Validação falhou: CPF inválido', documentoValido);
         Alert.alert('Erro', documentoValido?.erro || 'CPF inválido');
         return;
       }
 
       if (documentoValido.tipo !== 'cpf') {
+        console.log('Validação falhou: Usuário usando CNPJ');
         Alert.alert('Erro', 'Usuários devem usar CPF, não CNPJ');
         return;
       }
     }
 
+    console.log('Validações passaram, iniciando cadastro...');
     setCarregando(true);
 
     try {
@@ -338,6 +351,7 @@ export function RegisterModal({ visible, onClose, onSwitchToLogin }) {
         }
       }
 
+      console.log('Enviando dados para backend:', dadosRegistro);
       const response = await fetch('http://localhost:3001/auth/registro', {
         method: 'POST',
         headers: {
@@ -397,13 +411,16 @@ export function RegisterModal({ visible, onClose, onSwitchToLogin }) {
           mensagemErro = 'Erro de configuração do banco de dados. Contate o administrador.';
         }
         
+        console.log('Erro no cadastro:', mensagemErro, data);
         Alert.alert('Erro no Cadastro', mensagemErro);
         console.error('Erro detalhado:', data);
       }
     } catch (error) {
+      console.log('Erro no try/catch do cadastro:', error);
       console.error('Erro no registro:', error);
       Alert.alert('Erro', 'Erro de conexão. Verifique se o servidor está rodando.');
     } finally {
+      console.log('Finalizando cadastro, setCarregando(false)');
       setCarregando(false);
     }
   };
