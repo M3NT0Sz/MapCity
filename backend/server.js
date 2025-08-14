@@ -13,11 +13,27 @@ app.put('/admin/areas/:areaId/rejeitar', async (req, res) => {
     const { areaId } = req.params;
     const { motivo_rejeicao } = req.body;
     try {
+        // Atualiza status da área para rejeitada
         const result = await db.executarUpdate(
             "UPDATE areas_responsabilidade SET status = 'rejeitada', motivo_rejeicao = ?, data_aprovacao = NOW() WHERE id = ?",
             [motivo_rejeicao || null, areaId]
         );
         if (result.affectedRows > 0) {
+            // Buscar a área para pegar o ong_id
+            const area = await db.buscarUm('SELECT * FROM areas_responsabilidade WHERE id = ?', [areaId]);
+            if (area && area.ong_id) {
+                // Criar notificação para ONG (tipo 'marcador_removido' e lugar_id = NULL)
+                await db.inserir(
+                    'INSERT INTO notificacoes_ong (ong_id, area_id, lugar_id, tipo, titulo, mensagem, criada_em, lida) VALUES (?, ?, NULL, ?, ?, ?, NOW(), 0)',
+                    [
+                        area.ong_id,
+                        area.id,
+                        'marcador_removido', // ou outro tipo permitido pelo ENUM
+                        'Área rejeitada',
+                        `Sua área "${area.nome}" foi rejeitada pelo administrador.${motivo_rejeicao ? ' Motivo: ' + motivo_rejeicao : ''}`
+                    ]
+                );
+            }
             res.json({ success: true, id: areaId });
         } else {
             res.status(404).json({ error: 'Área não encontrada' });
@@ -76,6 +92,7 @@ app.delete('/areas/:id', autenticarONGouAdmin, async (req, res) => {
             console.error(`[EXCLUIR ÁREA] Status inválido para exclusão. Status: ${area.status}, ID: ${id}`);
             return res.status(400).json({ error: 'Só é possível excluir áreas pendentes, aprovadas ou rejeitadas.' });
         }
+        // Não criar notificação aqui! Apenas excluir.
         await db.executarUpdate('DELETE FROM areas_responsabilidade WHERE id = ?', [id]);
         console.log(`[EXCLUIR ÁREA] Área excluída com sucesso. ID: ${id}`);
         res.json({ success: true, id });
@@ -361,8 +378,14 @@ app.post('/lugares', async (req, res) => {
         const params = [nome, descricao || null, tipo, latitude, longitude, imagemStr];
         const id = await db.inserir(sql, params);
 
-        // Buscar áreas aprovadas que contenham o ponto (latitude, longitude)
-        const areas = await db.executarQuery("SELECT * FROM areas_responsabilidade WHERE status = 'aprovada'");
+
+        // Buscar áreas aprovadas com JOIN para pegar nome da ONG
+        const areas = await db.executarQuery(`
+            SELECT a.*, u.nome AS ong_nome
+            FROM areas_responsabilidade a
+            JOIN usuarios u ON a.ong_id = u.id
+            WHERE a.status = 'aprovada'
+        `);
         let areaEncontrada = null;
         for (const area of areas) {
             try {
@@ -388,7 +411,6 @@ app.post('/lugares', async (req, res) => {
             } catch (e) { /* ignora erro de parse */ }
         }
 
-
         if (areaEncontrada) {
             // Log temporário para depuração
             console.log('[NOTIFICAÇÃO] Tentando inserir notificação:', {
@@ -397,7 +419,8 @@ app.post('/lugares', async (req, res) => {
                 lugar_id: id,
                 tipo: 'novo_marcador',
                 titulo: 'Novo marcador na sua área',
-                mensagem: `Um novo marcador foi criado dentro da área "${areaEncontrada.nome}".`
+                mensagem: `Um novo marcador foi criado dentro da área "${areaEncontrada.nome}".`,
+                ong_nome: areaEncontrada.ong_nome
             });
             try {
                 await db.inserir(
@@ -484,7 +507,12 @@ app.put('/lugares/:id/resolver', async (req, res) => {
 });
 app.get('/areas/publicas', async (req, res) => {
     try {
-        const areas = await db.executarQuery("SELECT * FROM areas_responsabilidade WHERE status = 'aprovada'");
+        const areas = await db.executarQuery(`
+            SELECT a.*, u.nome AS ong_nome, u.email AS ong_email
+            FROM areas_responsabilidade a
+            JOIN usuarios u ON a.ong_id = u.id
+            WHERE a.status = 'aprovada'
+        `);
         res.json(areas);
     } catch (error) {
         // Erro ao buscar áreas públicas
@@ -616,16 +644,18 @@ app.post('/auth/registro', async (req, res) => {
 
         // Log removido
 
+        // Gerar token simulado igual ao login
+        const usuarioRetorno = {
+            id: novoUsuario.id,
+            nome: novoUsuario.nome,
+            email: novoUsuario.email,
+            tipo: novoUsuario.tipo
+        };
         res.status(201).json({
             success: true,
             message: 'Usuário registrado com sucesso!',
-            usuario: {
-                id: novoUsuario.id,
-                nome: novoUsuario.nome,
-                email: novoUsuario.email,
-                tipo: novoUsuario.tipo,
-                documento: validacao.documentoFormatado
-            }
+            usuario: usuarioRetorno,
+            token: 'token_simulado_' + novoUsuario.id
         });
 
     } catch (error) {
