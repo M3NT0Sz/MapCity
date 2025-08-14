@@ -1041,7 +1041,8 @@ export default function MapCityMap() {
     try {
       const novaArea = {
         nome: `Área ${new Date().toLocaleDateString()}`,
-        coordenadas: areaPoints
+        coordenadas: areaPoints,
+        ong_id: usuario.id
       };
 
       console.log('📍 Criando nova área:', novaArea);

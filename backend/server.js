@@ -3,14 +3,111 @@ const cors = require('cors');
 const bcrypt = require('bcrypt');
 const ValidadorDocumento = require('./validador-documento');
 const db = require('./database');
-
 const app = express();
-
-// Middleware
 app.use(cors());
 app.use(express.json());
 const multer = require('multer');
 const path = require('path');
+// GET /notificacoes - retorna todas as notificações das ONGs
+// GET /notificacoes - retorna notificações das ONGs, pode filtrar por ong_id
+app.get('/notificacoes', async (req, res) => {
+    try {
+        const ongId = req.query.ong_id;
+        let notificacoes;
+        if (ongId) {
+            notificacoes = await db.executarQuery('SELECT * FROM notificacoes_ong WHERE ong_id = ?', [ongId]);
+        } else {
+            notificacoes = await db.executarQuery('SELECT * FROM notificacoes_ong');
+        }
+        res.json(notificacoes);
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao buscar notificações', details: error.message });
+    }
+});
+
+// PUT /admin/areas/:areaId/aprovar - aprova uma área
+app.put('/admin/areas/:areaId/aprovar', async (req, res) => {
+    const { areaId } = req.params;
+    try {
+        const result = await db.executarUpdate(
+            "UPDATE areas_responsabilidade SET status = 'aprovada', data_aprovacao = NOW() WHERE id = ?",
+            [areaId]
+        );
+        if (result.affectedRows > 0) {
+            res.json({ success: true, id: areaId });
+        } else {
+            res.status(404).json({ error: 'Área não encontrada' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao aprovar área', details: error.message });
+    }
+});
+
+// GET /admin/areas/pendentes - retorna áreas pendentes de aprovação
+app.get('/admin/areas/pendentes', async (req, res) => {
+    try {
+        const areas = await db.executarQuery("SELECT * FROM areas_responsabilidade WHERE status = 'pendente'");
+        res.json(areas);
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao buscar áreas pendentes', details: error.message });
+    }
+});
+
+// GET /admin/areas - retorna todas as áreas para o painel admin
+app.get('/admin/areas', async (req, res) => {
+    try {
+        const areas = await db.executarQuery('SELECT * FROM areas_responsabilidade');
+        res.json(areas);
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao buscar todas as áreas', details: error.message });
+    }
+});
+
+// GET /areas - retorna todas as áreas cadastradas
+app.get('/areas', async (req, res) => {
+    try {
+        // No futuro: filtrar por ong_id do usuário autenticado
+        const areas = await db.executarQuery('SELECT * FROM areas_responsabilidade');
+        res.json(areas);
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao buscar áreas', details: error.message });
+    }
+});
+
+// POST /areas - criar nova área de responsabilidade
+app.post('/areas', async (req, res) => {
+    try {
+        const { ong_id, nome, descricao, coordenadas, status } = req.body;
+        if (!ong_id || !nome || !coordenadas) {
+            return res.status(400).json({ error: 'Campos obrigatórios: ong_id, nome, coordenadas' });
+        }
+        // status padrão: pendente, a não ser que seja explicitamente aprovado
+        const statusArea = status || 'pendente';
+        const sql = `INSERT INTO areas_responsabilidade (ong_id, nome, descricao, coordenadas, status, criada_em) VALUES (?, ?, ?, ?, ?, NOW())`;
+        const params = [ong_id, nome, descricao || null, JSON.stringify(coordenadas), statusArea];
+        const id = await db.inserir(sql, params);
+        res.status(201).json({ success: true, id });
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao criar área', details: error.message });
+    }
+});
+
+// DELETE /lugares/:id - deletar marcador
+app.delete('/lugares/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        // Verifica se o marcador existe
+        const marcador = await db.buscarUm('SELECT * FROM lugares WHERE id = ?', [id]);
+        if (!marcador) {
+            return res.status(404).json({ error: 'Marcador não encontrado' });
+        }
+        // Deleta o marcador
+        await db.executarUpdate('DELETE FROM lugares WHERE id = ?', [id]);
+        res.json({ success: true, id });
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao deletar marcador', details: error.message });
+    }
+});
 
 // Configuração do multer para salvar arquivos na pasta uploads/
 const storage = multer.diskStorage({
