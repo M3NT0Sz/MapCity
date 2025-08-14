@@ -142,22 +142,22 @@ CREATE TABLE IF NOT EXISTS areas_responsabilidade (
 -- ============================================================================
 -- TABELA: notificacoes_ong
 CREATE TABLE IF NOT EXISTS notificacoes_ong (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    ong_id INT NOT NULL,
-    area_id INT NOT NULL,
-    lugar_id INT NOT NULL,
-    tipo ENUM('novo_marcador', 'marcador_resolvido', 'marcador_removido') NOT NULL,
-    titulo VARCHAR(255) NOT NULL,
-    mensagem TEXT NOT NULL,
-    lida BOOLEAN DEFAULT FALSE,
-    criada_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (ong_id) REFERENCES usuarios(id) ON DELETE CASCADE,
-    FOREIGN KEY (area_id) REFERENCES areas_responsabilidade(id) ON DELETE CASCADE,
-    FOREIGN KEY (lugar_id) REFERENCES lugares(id) ON DELETE CASCADE,
-    INDEX idx_ong_id (ong_id),
-    INDEX idx_lida (lida),
-    INDEX idx_criada_em (criada_em),
-    INDEX idx_tipo (tipo)
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  ong_id INT NOT NULL,
+  area_id INT NOT NULL,
+  lugar_id INT NULL,
+  tipo ENUM('novo_marcador', 'marcador_resolvido', 'marcador_removido') NOT NULL,
+  titulo VARCHAR(255) NOT NULL,
+  mensagem TEXT NOT NULL,
+  lida BOOLEAN DEFAULT FALSE,
+  criada_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (ong_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+  FOREIGN KEY (area_id) REFERENCES areas_responsabilidade(id) ON DELETE CASCADE,
+  FOREIGN KEY (lugar_id) REFERENCES lugares(id) ON DELETE CASCADE,
+  INDEX idx_ong_id (ong_id),
+  INDEX idx_lida (lida),
+  INDEX idx_criada_em (criada_em),
+  INDEX idx_tipo (tipo)
 );
 
 -- ============================================================================

@@ -18,6 +18,7 @@ function parseMySQLDate(dateStr) {
   return isNaN(d.getTime()) ? null : d;
 }
 import { lugaresAPI, areasAPI, uploadAPI, usuariosAPI as userAPI } from './api';
+import adminAreasAPI from './AdminAreasAPI';
 import AdminDashboard from './AdminDashboard';
 import { Platform, Modal, ScrollView, TextInput, Alert } from 'react-native';
 import React, { useState, useCallback } from 'react';
@@ -1018,11 +1019,16 @@ export default function MapCityMap() {
         const data = await areasAPI.buscarAreas();
         setAreas(data);
       } else if (usuario.tipo === 'admin') {
-        const { adminAreasAPI } = await import('./AdminAreasAPI');
         const data = await adminAreasAPI.buscarTodasAreas();
         const areasArray = data.areas || [];
+        // Log detalhado para debug
+        console.log('[ADMIN] Áreas recebidas do backend:', areasArray.map(a => ({id: a.id, nome: a.nome, status: a.status})));
         // Exibir apenas áreas aprovadas e pendentes para admin (remover rejeitadas do mapa)
-        const areasVisiveis = areasArray.filter(area => area.status === 'aprovada' || area.status === 'pendente');
+        const areasVisiveis = areasArray.filter(area => {
+          const status = (area.status || '').toLowerCase().trim();
+          return status === 'aprovada' || status === 'pendente';
+        });
+        console.log('[ADMIN] Áreas visíveis no mapa:', areasVisiveis.map(a => ({id: a.id, nome: a.nome, status: a.status})));
         setAreas(areasVisiveis);
       } else if (usuario.tipo === 'usuario') {
         // Usuários comuns usam endpoint público para áreas aprovadas
