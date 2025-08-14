@@ -11,6 +11,33 @@ USE mapcity;
 -- TABELA: lugares
 -- Armazena os marcadores de problemas/locais no mapa
 -- ============================================================================
+
+-- ============================================================================
+-- TABELA: usuarios
+CREATE TABLE IF NOT EXISTS usuarios (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nome VARCHAR(100) NOT NULL,
+  email VARCHAR(100) UNIQUE NOT NULL,
+  senha VARCHAR(255) NOT NULL,
+  tipo ENUM('usuario', 'ong', 'admin') DEFAULT 'usuario',
+  documento VARCHAR(20) UNIQUE,
+  ong_id INT NULL,
+  ativo BOOLEAN DEFAULT TRUE,
+  banido_em DATETIME NULL,
+  criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (ong_id) REFERENCES ongs(id) ON DELETE SET NULL,
+  INDEX idx_tipo (tipo),
+  INDEX idx_ativo (ativo),
+  INDEX idx_ong_id (ong_id),
+  INDEX idx_banido_em (banido_em),
+  INDEX idx_documento (documento)
+);
+
+-- ============================================================================
+-- TABELA: lugares
+-- Armazena os marcadores de problemas/locais no mapa
+-- ============================================================================
 CREATE TABLE IF NOT EXISTS lugares (
   id INT AUTO_INCREMENT PRIMARY KEY,
   nome VARCHAR(100) NOT NULL,
@@ -24,7 +51,7 @@ CREATE TABLE IF NOT EXISTS lugares (
   area_ong_id INT NULL,
   usuario_id INT NULL,
   criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (area_ong_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+  FOREIGN KEY (area_ong_id) REFERENCES ongs(id) ON DELETE SET NULL,
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
   INDEX idx_tipo (tipo),
   INDEX idx_resolvido (resolvido),
