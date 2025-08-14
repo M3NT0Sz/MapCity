@@ -3501,6 +3501,21 @@ export default function MapCityMap() {
           }, 200);
           setIsAdminDashboardVisible(false);
         }}
+        onSelectArea={area => {
+          // Foca e dá zoom na área (polígono)
+          setTimeout(() => {
+            if (window.mapInstance && area.coordenadas) {
+              let coords = area.coordenadas;
+              if (typeof coords === 'string') {
+                try { coords = JSON.parse(coords); } catch {}
+              }
+              if (Array.isArray(coords) && coords.length > 0) {
+                const latlngs = coords.map(c => [c.lat, c.lng]);
+                window.mapInstance.fitBounds(latlngs, { padding: [60, 60], animate: true, maxZoom: 18 });
+              }
+            }
+          }, 200);
+        }}
       />
 
       {/* Modal de Exclusão de Área (ONG) */}

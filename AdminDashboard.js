@@ -19,7 +19,7 @@ import { adminAPI, denunciasAPI, lugaresAPI, areasAPI } from './api';
 
 const { width, height } = Dimensions.get('window');
 
-const AdminDashboard = ({ visible, onClose, onSelectMarcador }) => {
+const AdminDashboard = ({ visible, onClose, onSelectMarcador, onSelectArea }) => {
   // ...existing code...
   const [areasPendentes, setAreasPendentes] = useState([]);
   const [todasAreas, setTodasAreas] = useState([]);
@@ -48,6 +48,7 @@ const AdminDashboard = ({ visible, onClose, onSelectMarcador }) => {
   const [observacoes, setObservacoes] = useState('');
   
   const [areaSelected, setAreaSelected] = useState(null);
+  const [modalAreaVisible, setModalAreaVisible] = useState(false);
   const [motivoRejeicao, setMotivoRejeicao] = useState('');
   
   // Estados para marcadores
@@ -602,7 +603,20 @@ const AdminDashboard = ({ visible, onClose, onSelectMarcador }) => {
           </Text>
           
           {areasPendentes.map(area => (
-            <View key={area.id} style={styles.card}>
+            <TouchableOpacity
+              key={area.id}
+              style={styles.card}
+              activeOpacity={0.85}
+              onPress={() => {
+                if (onSelectArea) {
+                  onSelectArea(area);
+                  onClose && onClose();
+                } else {
+                  setAreaSelected(area);
+                  setModalAreaVisible(true);
+                }
+              }}
+            >
               <View style={styles.cardHeader}>
                 <Text style={styles.cardTitle}>{area.nome}</Text>
                 <View style={[styles.badge, styles.badgePending]}>
@@ -628,12 +642,15 @@ const AdminDashboard = ({ visible, onClose, onSelectMarcador }) => {
                 )}
                 <TouchableOpacity 
                   style={[styles.button, styles.buttonDanger]}
-                  onPress={() => setAreaSelected(area)}
+                  onPress={() => {
+                    setAreaSelected(area);
+                    setModalAreaVisible(false); // Fecha o modal de detalhes, se aberto
+                  }}
                 >
                   <Text style={styles.buttonText}>Rejeitar</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </TouchableOpacity>
           ))}
         </>
       )}
@@ -650,7 +667,19 @@ const AdminDashboard = ({ visible, onClose, onSelectMarcador }) => {
         todasAreas
           .filter(area => (area.status || '').toLowerCase().replace(/\s/g, '') !== 'pendente')
           .map(area => (
-            <View key={area.id} style={styles.card}>
+            <TouchableOpacity
+              key={area.id}
+              style={styles.card}
+              activeOpacity={0.85}
+              onPress={() => {
+                setAreaSelected(area);
+                setModalAreaVisible(true);
+                if (onSelectArea) {
+                  onSelectArea(area);
+                  onClose && onClose();
+                }
+              }}
+            >
               <View style={styles.cardHeader}>
                 <Text style={styles.cardTitle}>{area.nome}</Text>
                 <View style={[
@@ -681,9 +710,10 @@ const AdminDashboard = ({ visible, onClose, onSelectMarcador }) => {
                   </TouchableOpacity>
                 </View>
               )}
-            </View>
+            </TouchableOpacity>
           ))
-      )}
+        )}
+  {/* Modal de detalhes da área removido */}
     </ScrollView>
   );
 
@@ -855,7 +885,7 @@ const AdminDashboard = ({ visible, onClose, onSelectMarcador }) => {
       </View>
       {/* Modal para rejeitar área */}
       <Modal
-        visible={areaSelected !== null}
+        visible={areaSelected !== null && !modalAreaVisible}
         transparent
         animationType="fade"
         onRequestClose={() => setAreaSelected(null)}
