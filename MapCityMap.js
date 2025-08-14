@@ -18,7 +18,6 @@ function parseMySQLDate(dateStr) {
   return isNaN(d.getTime()) ? null : d;
 }
 import { lugaresAPI, areasAPI, uploadAPI, usuariosAPI as userAPI } from './api';
-import AdminAreasPanel from './AdminAreasPanel';
 import AdminDashboard from './AdminDashboard';
 import { Platform, Modal, ScrollView, TextInput, Alert } from 'react-native';
 import React, { useState, useCallback } from 'react';
@@ -744,7 +743,6 @@ export default function MapCityMap() {
   const [notificacoes, setNotificacoes] = useState([]);
   const [showNotificacoes, setShowNotificacoes] = useState(false);
   const [isNotificationModalVisible, setIsNotificationModalVisible] = useState(false);
-  const [isAdminAreasPanelVisible, setIsAdminAreasPanelVisible] = useState(false);
   const [isAdminDashboardVisible, setIsAdminDashboardVisible] = useState(false);
   const [areaParaExcluir, setAreaParaExcluir] = useState(null);
   const [marcadorParaExcluir, setMarcadorParaExcluir] = useState(null);
@@ -3480,15 +3478,6 @@ export default function MapCityMap() {
         </View>
       </Modal>
 
-      {/* Painel Administrativo de Áreas */}
-      <AdminAreasPanel
-        visible={isAdminAreasPanelVisible}
-        onClose={() => setIsAdminAreasPanelVisible(false)}
-        onAreaUpdate={() => {
-          // Recarregar áreas quando houver aprovação/rejeição/exclusão
-          carregarAreas();
-        }}
-      />
 
       {/* Painel Administrativo Completo */}
       <AdminDashboard
