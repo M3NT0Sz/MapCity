@@ -8,8 +8,36 @@ import { StyleSheet, Text, View, TouchableOpacity, Image } from 'react-native';
 
 const Stack = createNativeStackNavigator();
 
-function HomeScreen({ navigation }) {
-  const { estaLogado, usuario, carregando } = useAuth();
+
+function AppNavbar({ onLogin, onRegister }) {
+  const { estaLogado } = useAuth();
+  return (
+    <View style={styles.navbar}>
+      <View style={styles.logoContainer}>
+        <Image 
+          source={require('./public/logoMap.png')} 
+          style={styles.logoImage}
+        />
+        <Text style={styles.logo}>MapCity</Text>
+      </View>
+      {!estaLogado ? (
+        <View style={styles.authLinks}>
+          <Text style={styles.link} onPress={onLogin}>
+            Entrar
+          </Text>
+          <Text style={styles.link} onPress={onRegister}>
+            Cadastrar
+          </Text>
+        </View>
+      ) : (
+        <UserInfo />
+      )}
+    </View>
+  );
+}
+
+function MainMapScreen() {
+  const { carregando } = useAuth();
   const [showLoginModal, setShowLoginModal] = React.useState(false);
   const [showRegisterModal, setShowRegisterModal] = React.useState(false);
 
@@ -33,71 +61,15 @@ function HomeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.navbar}>
-        <View style={styles.logoContainer}>
-          <Image 
-            source={require('./public/logoMap.png')} 
-            style={styles.logoImage}
-          />
-          <Text style={styles.logo}>MapCity</Text>
-        </View>
-        {!estaLogado ? (
-          <View style={styles.authLinks}>
-            <Text style={styles.link} onPress={() => setShowLoginModal(true)}>
-              Entrar
-            </Text>
-            <Text style={styles.link} onPress={() => setShowRegisterModal(true)}>
-              Cadastrar
-            </Text>
-          </View>
-        ) : (
-          <UserInfo />
-        )}
+      <AppNavbar onLogin={() => setShowLoginModal(true)} onRegister={() => setShowRegisterModal(true)} />
+      <View style={{ flex: 1, position: 'relative', minHeight: 0 }}>
+        <MapCityMap />
       </View>
-
-      <View style={styles.mainContent}>
-        <Text style={styles.title}>Bem-vindo ao MapCity!</Text>
-        <Text style={styles.description}>
-          Uma plataforma que conecta cidadãos e autoridades, permitindo identificar 
-          e reportar problemas urbanos para melhorar nossa cidade.
-        </Text>
-        
-        {estaLogado ? (
-          <TouchableOpacity 
-            style={styles.mapButton}
-            onPress={() => navigation.navigate('Mapa')}
-          >
-            <Text style={styles.buttonText}>Ver Mapa</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.loginPrompt}>
-            <Text style={styles.loginPromptText}>
-              Faça login para acessar o mapa e reportar problemas
-            </Text>
-            <View style={styles.authButtons}>
-              <TouchableOpacity 
-                style={styles.loginButton}
-                onPress={() => setShowLoginModal(true)}
-              >
-                <Text style={styles.buttonText}>Fazer Login</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.registerButton}
-                onPress={() => setShowRegisterModal(true)}
-              >
-                <Text style={styles.buttonText}>Criar Conta</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-      </View>
-
       <LoginModal 
         visible={showLoginModal} 
         onClose={() => setShowLoginModal(false)}
         onSwitchToRegister={handleSwitchToRegister}
       />
-
       <RegisterModal 
         visible={showRegisterModal} 
         onClose={() => setShowRegisterModal(false)}
@@ -107,21 +79,10 @@ function HomeScreen({ navigation }) {
   );
 }
 
+
 function AppContent() {
-  return (
-    <NavigationContainer>
-      <Stack.Navigator>
-        <Stack.Screen 
-          name="Início" 
-          component={HomeScreen}
-          options={{
-            headerShown: false
-          }}
-        />
-        <Stack.Screen name="Mapa" component={MapCityMap} />
-      </Stack.Navigator>
-    </NavigationContainer>
-  );
+  // Apenas uma tela: o mapa com a navbar
+  return <MainMapScreen />;
 }
 
 export default function App() {
@@ -152,6 +113,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
     backgroundColor: '#fff',
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+  },
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    paddingTop: 50, // espaço para a navbar fixa
   },
   logoContainer: {
     flexDirection: 'row',

@@ -705,19 +705,7 @@ export default function MapCityMap() {
   const [areaParaExcluir, setAreaParaExcluir] = useState(null);
   const [marcadorParaExcluir, setMarcadorParaExcluir] = useState(null);
 
-  // Verificar se o usuário está logado
-  if (!estaLogado) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-        <Text style={{ fontSize: 18, textAlign: 'center', marginBottom: 20 }}>
-          Você precisa estar logado para acessar o mapa
-        </Text>
-        <Text style={{ fontSize: 14, color: '#666', textAlign: 'center' }}>
-          Volte para a tela inicial e faça o login
-        </Text>
-      </View>
-    );
-  }
+  // Permitir acesso ao mapa para visitantes, mas restringir ações
 
   // Função auxiliar para gerar endereço de fallback
   const generateFallbackAddress = (lat, lng) => {
