@@ -501,6 +501,25 @@ export const adminAPI = {
 
 // ========= USUÁRIOS API =========
 export const usuariosAPI = {
+  // Buscar todos os usuários (ONGs e outros)
+  buscarTodos: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/usuarios`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Erro ao buscar usuários');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Erro ao buscar usuários:', error);
+      return [];
+    }
+  },
   // Login
   login: async (email, senha) => {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {

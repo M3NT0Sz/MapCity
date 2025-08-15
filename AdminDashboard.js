@@ -19,7 +19,7 @@ import { adminAPI, denunciasAPI, lugaresAPI, areasAPI } from './api';
 
 const { width, height } = Dimensions.get('window');
 
-const AdminDashboard = ({ visible, onClose, onSelectMarcador, onSelectArea }) => {
+const AdminDashboard = ({ visible, onClose, onSelectMarcador, onSelectArea, onAreasChanged }) => {
   // ...existing code...
   const [areasPendentes, setAreasPendentes] = useState([]);
   const [todasAreas, setTodasAreas] = useState([]);
@@ -154,6 +154,8 @@ const AdminDashboard = ({ visible, onClose, onSelectMarcador, onSelectArea }) =>
                       console.log('[areasAPI.excluirArea] Resultado do fetch', result);
                       if (response.ok) {
                         alert('Área excluída com sucesso');
+                        await carregarAreas(); // Atualiza a lista após exclusão
+                        if (onAreasChanged) await onAreasChanged(); // Notifica o mapa para atualizar
                       } else {
                         alert('Erro ao excluir área: ' + (result.error || response.statusText));
                       }
@@ -269,6 +271,7 @@ const AdminDashboard = ({ visible, onClose, onSelectMarcador, onSelectArea }) =>
       await adminAPI.aprovarArea(areaId);
       Alert.alert('Sucesso', 'Área aprovada com sucesso');
       await carregarAreas();
+      if (onAreasChanged) await onAreasChanged(); // Notifica o mapa para atualizar
     } catch (error) {
       Alert.alert('Erro', error.message);
     } finally {
@@ -289,6 +292,7 @@ const AdminDashboard = ({ visible, onClose, onSelectMarcador, onSelectArea }) =>
       setAreaSelected(null);
       setMotivoRejeicao('');
       await carregarAreas();
+      if (onAreasChanged) await onAreasChanged(); // Notifica o mapa para atualizar
     } catch (error) {
       Alert.alert('Erro', error.message);
     } finally {
@@ -304,10 +308,9 @@ const AdminDashboard = ({ visible, onClose, onSelectMarcador, onSelectArea }) =>
     }
     if (!confirmar) return;
     try {
-      setLoading(true);
+  setLoading(true);
   await areasAPI.excluirArea(areaId);
-  await carregarAreas();
-  window.location.reload();
+  await carregarAreas(); // Atualiza o painel sem recarregar a página
     } catch (error) {
       let msg = error && error.message ? error.message : 'Erro desconhecido';
       // Loga o erro completo para depuração
