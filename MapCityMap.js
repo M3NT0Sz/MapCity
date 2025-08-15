@@ -1514,12 +1514,21 @@ export default function MapCityMap() {
 
             // Se conseguiu criar o polígono, verificar se o ponto está dentro
             if (polygon.length >= 3 && isPointInPolygon(point, polygon)) {
+              // Buscar nome da ONG pelo id do usuário se não houver area.ong_nome
+              let resolvedOngNome = area.ong_nome || area.usuario_nome;
+              let resolvedOngEmail = area.ong_email || area.usuario_email;
+              if ((!resolvedOngNome || resolvedOngNome === 'null') && area.ong_id && Array.isArray(usuarios)) {
+                const usuarioOng = usuarios.find(u => String(u.id) === String(area.ong_id));
+                if (usuarioOng) {
+                  resolvedOngNome = usuarioOng.nome;
+                  resolvedOngEmail = usuarioOng.email;
+                }
+              }
               return {
                 id: area.id,
                 nome: area.nome,
-                ongNome:
-                  area.ong_nome || area.usuario_nome || "ONG não identificada",
-                ongEmail: area.ong_email || area.usuario_email || "",
+                ongNome: resolvedOngNome || "ONG não identificada",
+                ongEmail: resolvedOngEmail || "",
                 status: area.status,
               };
             }
