@@ -55,6 +55,7 @@ import {
   StyleSheet,
   Dimensions,
   RefreshControl,
+  Platform,
 } from "react-native";
 import { useAuth } from "./AuthComponents";
 import { adminAPI, denunciasAPI, lugaresAPI, areasAPI } from "./api";
@@ -108,6 +109,11 @@ const AdminDashboard = ({
   const [marcadorSelected, setMarcadorSelected] = useState(null);
   // Endereços cacheados por denunciaId
   const [enderecos, setEnderecos] = useState({});
+  // Filtros para marcadores
+  const [filtroTipo, setFiltroTipo] = useState("Todos");
+  const [filtroResolvido, setFiltroResolvido] = useState(""); // '', 'sim', 'nao'
+  const [filtroDataInicio, setFiltroDataInicio] = useState("");
+  const [filtroDataFim, setFiltroDataFim] = useState("");
 
   useEffect(() => {
     if (
@@ -1197,98 +1203,283 @@ const AdminDashboard = ({
     </ScrollView>
   );
 
-  const renderMarcadores = () => (
-    <ScrollView
-      style={styles.tabContent}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+  const renderMarcadores = () => {
+    const filtrados = marcadores.filter((m) => {
+      if (filtroTipo && filtroTipo !== 'Todos' && m.tipo !== filtroTipo) return false;
+      if (filtroResolvido === 'sim' && !m.resolvido) return false;
+      if (filtroResolvido === 'nao' && m.resolvido) return false;
+      if (filtroDataInicio) {
+        const dataCriado = new Date(m.criado_em);
+        const dataInicio = new Date(filtroDataInicio);
+        if (dataCriado < dataInicio) return false;
       }
-    >
-      <Text style={styles.sectionTitle}>
-        Marcadores {usuario.tipo === "ong" ? "na sua área" : "no sistema"} (
-        {marcadores.length})
-      </Text>
-
-      {marcadores.map((marcador) => (
-        <TouchableOpacity
-          key={marcador.id}
-          style={styles.card}
-          activeOpacity={0.85}
-          onPress={() => {
-            if (onSelectMarcador) {
-              onSelectMarcador(marcador);
-              onClose();
-            } else {
-              setMarcadorSelected(marcador);
-            }
-          }}
-        >
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>{marcador.nome}</Text>
-            <View
-              style={[
-                styles.badge,
-                marcador.resolvido ? styles.badgeSuccess : styles.badgeWarning,
-              ]}
-            >
-              <Text style={styles.badgeText}>
-                {marcador.resolvido ? "Resolvido" : "Pendente"}
-              </Text>
+      if (filtroDataFim) {
+        const dataCriado = new Date(m.criado_em);
+        const dataFim = new Date(filtroDataFim);
+        if (dataCriado > dataFim) return false;
+      }
+      return true;
+    });
+    return (
+      <ScrollView
+        style={styles.tabContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        <Text style={styles.sectionTitle}>
+          Marcadores {usuario.tipo === "ong" ? "na sua área" : "no sistema"} ({filtrados.length})
+        </Text>
+        {/* Filtros */}
+        <View style={{
+          marginBottom: 18,
+          backgroundColor: '#fff',
+          borderRadius: 12,
+          padding: 16,
+          borderWidth: 1,
+          borderColor: '#e5e7eb',
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: 16,
+          alignItems: 'center',
+          boxShadow: Platform.OS === 'web' ? '0 2px 8px rgba(0,0,0,0.06)' : undefined,
+        }}>
+          {/* Tipo */}
+          <View style={{ flex: 1, minWidth: 120 }}>
+            <Text style={{ fontSize: 13, color: '#374151', marginBottom: 4, fontWeight: 'bold', letterSpacing: 0.2 }}>Tipo</Text>
+            {Platform.OS === 'web' ? (
+              <select
+                value={filtroTipo}
+                onChange={e => setFiltroTipo(e.target.value)}
+                style={{
+                  height: 38,
+                  width: '100%',
+                  borderRadius: 8,
+                  border: '1px solid #d1d5db',
+                  padding: '0 12px',
+                  fontSize: 15,
+                  backgroundColor: '#f9fafb',
+                  color: '#222',
+                  marginBottom: 0,
+                  outline: 'none',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                  transition: 'border 0.2s, box-shadow 0.2s',
+                  cursor: 'pointer',
+                }}
+                onFocus={e => e.target.style.border = '1.5px solid #2563eb'}
+                onBlur={e => e.target.style.border = '1px solid #d1d5db'}
+              >
+                <option value="Todos">Todos</option>
+                <option value="lixo">Lixo</option>
+                <option value="buraco">Buraco</option>
+                <option value="iluminacao">Iluminação</option>
+                <option value="outro">Outro</option>
+              </select>
+            ) : (
+              <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 0 }}>
+                {[{ value: 'Todos', label: 'Todos' }, { value: 'lixo', label: 'Lixo' }, { value: 'buraco', label: 'Buraco' }, { value: 'iluminacao', label: 'Iluminação' }, { value: 'outro', label: 'Outro' }].map(opt => (
+                  <TouchableOpacity
+                    key={opt.value}
+                    onPress={() => setFiltroTipo(opt.value)}
+                    style={{
+                      backgroundColor: filtroTipo === opt.value ? '#2563eb' : '#f3f4f6',
+                      borderRadius: 8,
+                      paddingHorizontal: 12,
+                      paddingVertical: 7,
+                      marginRight: 0,
+                      marginBottom: 4,
+                      borderWidth: filtroTipo === opt.value ? 1.5 : 1,
+                      borderColor: filtroTipo === opt.value ? '#2563eb' : '#d1d5db',
+                      shadowColor: filtroTipo === opt.value ? '#2563eb' : undefined,
+                      shadowOpacity: filtroTipo === opt.value ? 0.12 : 0,
+                    }}
+                  >
+                    <Text style={{ color: filtroTipo === opt.value ? '#fff' : '#374151', fontWeight: filtroTipo === opt.value ? 'bold' : '500' }}>{opt.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+          {/* Status */}
+          <View style={{ flexDirection: 'column', minWidth: 120 }}>
+            <Text style={{ fontSize: 13, color: '#374151', marginBottom: 4, fontWeight: 'bold', letterSpacing: 0.2 }}>Status</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity onPress={() => setFiltroResolvido('')} style={{
+                backgroundColor: filtroResolvido === '' ? '#2563eb' : '#f3f4f6',
+                borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7, marginRight: 0,
+                borderWidth: filtroResolvido === '' ? 1.5 : 1,
+                borderColor: filtroResolvido === '' ? '#2563eb' : '#d1d5db',
+              }}>
+                <Text style={{ color: filtroResolvido === '' ? '#fff' : '#374151', fontWeight: filtroResolvido === '' ? 'bold' : '500' }}>Todos</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setFiltroResolvido('sim')} style={{
+                backgroundColor: filtroResolvido === 'sim' ? '#059669' : '#f3f4f6',
+                borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7, marginRight: 0,
+                borderWidth: filtroResolvido === 'sim' ? 1.5 : 1,
+                borderColor: filtroResolvido === 'sim' ? '#059669' : '#d1d5db',
+              }}>
+                <Text style={{ color: filtroResolvido === 'sim' ? '#fff' : '#374151', fontWeight: filtroResolvido === 'sim' ? 'bold' : '500' }}>Resolvido</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setFiltroResolvido('nao')} style={{
+                backgroundColor: filtroResolvido === 'nao' ? '#f59e0b' : '#f3f4f6',
+                borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7, marginRight: 0,
+                borderWidth: filtroResolvido === 'nao' ? 1.5 : 1,
+                borderColor: filtroResolvido === 'nao' ? '#f59e0b' : '#d1d5db',
+              }}>
+                <Text style={{ color: filtroResolvido === 'nao' ? '#fff' : '#374151', fontWeight: filtroResolvido === 'nao' ? 'bold' : '500' }}>Pendente</Text>
+              </TouchableOpacity>
             </View>
           </View>
-          <Text style={styles.cardText}>Tipo: {marcador.tipo}</Text>
-          <Text style={styles.cardText}>Descrição: {marcador.descricao}</Text>
-          <Text style={styles.cardText}>
-            Localização:{" "}
-            {typeof marcador.latitude === "number" &&
-            typeof marcador.longitude === "number"
-              ? `${marcador.latitude.toFixed(6)}, ${marcador.longitude.toFixed(
-                  6
-                )}`
-              : `${marcador.latitude || "N/A"}, ${marcador.longitude || "N/A"}`}
-          </Text>
-          <Text style={styles.cardText}>
-            Criado em: {new Date(marcador.criado_em).toLocaleDateString()}
-          </Text>
-          {marcador.resolvido && marcador.resolvido_em && (
-            <Text style={styles.cardTextSuccess}>
-              Resolvido em:{" "}
-              {new Date(marcador.resolvido_em).toLocaleDateString()}
-            </Text>
-          )}
-          <View style={styles.cardActions}>
-            <TouchableOpacity
-              style={[
-                styles.button,
-                marcador.resolvido
-                  ? styles.buttonWarning
-                  : styles.buttonSuccess,
-              ]}
-              onPress={() =>
-                marcarComoResolvido(marcador.id, !marcador.resolvido)
-              }
-            >
-              <Text style={styles.buttonText}>
-                {marcador.resolvido ? "Reabrir" : "Resolver"}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.button, styles.buttonDanger]}
-              onPress={() => excluirMarcador(marcador.id)}
-            >
-              <Text style={styles.buttonText}>Excluir</Text>
-            </TouchableOpacity>
+          {/* Data início */}
+          <View style={{ flex: 1, minWidth: 120 }}>
+            <Text style={{ fontSize: 13, color: '#374151', marginBottom: 4, fontWeight: 'bold', letterSpacing: 0.2 }}>Data inicial</Text>
+            {Platform.OS === 'web' ? (
+              <input
+                type="date"
+                value={filtroDataInicio}
+                onChange={e => setFiltroDataInicio(e.target.value)}
+                style={{
+                  padding: '0 12px',
+                  fontSize: 15,
+                  border: '1px solid #d1d5db',
+                  borderRadius: 8,
+                  backgroundColor: '#f9fafb',
+                  width: '100%',
+                  marginBottom: 0,
+                  height: 38,
+                  outline: 'none',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                  transition: 'border 0.2s, box-shadow 0.2s',
+                }}
+                onFocus={e => e.target.style.border = '1.5px solid #2563eb'}
+                onBlur={e => e.target.style.border = '1px solid #d1d5db'}
+              />
+            ) : (
+              <TextInput
+                placeholder="AAAA-MM-DD"
+                value={filtroDataInicio}
+                onChangeText={setFiltroDataInicio}
+                style={{ paddingHorizontal: 12, fontSize: 15, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, backgroundColor: '#f9fafb', width: '100%', marginBottom: 0, height: 38 }}
+                keyboardType="numeric"
+              />
+            )}
           </View>
-        </TouchableOpacity>
-      ))}
-
-      {marcadores.length === 0 && (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>Nenhum marcador encontrado</Text>
+          {/* Data fim */}
+          <View style={{ flex: 1, minWidth: 120 }}>
+            <Text style={{ fontSize: 13, color: '#374151', marginBottom: 4, fontWeight: 'bold', letterSpacing: 0.2 }}>Data final</Text>
+            {Platform.OS === 'web' ? (
+              <input
+                type="date"
+                value={filtroDataFim}
+                onChange={e => setFiltroDataFim(e.target.value)}
+                style={{
+                  padding: '0 12px',
+                  fontSize: 15,
+                  border: '1px solid #d1d5db',
+                  borderRadius: 8,
+                  backgroundColor: '#f9fafb',
+                  width: '100%',
+                  marginBottom: 0,
+                  height: 38,
+                  outline: 'none',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                  transition: 'border 0.2s, box-shadow 0.2s',
+                }}
+                onFocus={e => e.target.style.border = '1.5px solid #2563eb'}
+                onBlur={e => e.target.style.border = '1px solid #d1d5db'}
+              />
+            ) : (
+              <TextInput
+                placeholder="AAAA-MM-DD"
+                value={filtroDataFim}
+                onChangeText={setFiltroDataFim}
+                style={{ paddingHorizontal: 12, fontSize: 15, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, backgroundColor: '#f9fafb', width: '100%', marginBottom: 0, height: 38 }}
+                keyboardType="numeric"
+              />
+            )}
+          </View>
         </View>
-      )}
-    </ScrollView>
-  );
+        {filtrados.map((marcador) => (
+          <TouchableOpacity
+            key={marcador.id}
+            style={styles.card}
+            activeOpacity={0.85}
+            onPress={() => {
+              if (onSelectMarcador) {
+                onSelectMarcador(marcador);
+                onClose();
+              } else {
+                setMarcadorSelected(marcador);
+              }
+            }}
+          >
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>{marcador.nome}</Text>
+              <View
+                style={[
+                  styles.badge,
+                  marcador.resolvido ? styles.badgeSuccess : styles.badgeWarning,
+                ]}
+              >
+                <Text style={styles.badgeText}>
+                  {marcador.resolvido ? "Resolvido" : "Pendente"}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.cardText}>Tipo: {marcador.tipo}</Text>
+            <Text style={styles.cardText}>Descrição: {marcador.descricao}</Text>
+            <Text style={styles.cardText}>
+              Localização:{" "}
+              {typeof marcador.latitude === "number" &&
+              typeof marcador.longitude === "number"
+                ? `${marcador.latitude.toFixed(6)}, ${marcador.longitude.toFixed(
+                    6
+                  )}`
+                : `${marcador.latitude || "N/A"}, ${marcador.longitude || "N/A"}`}
+            </Text>
+            <Text style={styles.cardText}>
+              Criado em: {new Date(marcador.criado_em).toLocaleDateString()}
+            </Text>
+            {marcador.resolvido && marcador.resolvido_em && (
+              <Text style={styles.cardTextSuccess}>
+                Resolvido em:{" "}
+                {new Date(marcador.resolvido_em).toLocaleDateString()}
+              </Text>
+            )}
+            <View style={styles.cardActions}>
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  marcador.resolvido
+                    ? styles.buttonWarning
+                    : styles.buttonSuccess,
+                ]}
+                onPress={() =>
+                  marcarComoResolvido(marcador.id, !marcador.resolvido)
+                }
+              >
+                <Text style={styles.buttonText}>
+                  {marcador.resolvido ? "Reabrir" : "Resolver"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.button, styles.buttonDanger]}
+                onPress={() => excluirMarcador(marcador.id)}
+              >
+                <Text style={styles.buttonText}>Excluir</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        ))}
+
+        {filtrados.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>Nenhum marcador encontrado</Text>
+          </View>
+        )}
+      </ScrollView>
+    );
+  };
 
   const renderTabButtons = () => {
     const denunciasPendentes = denuncias.filter(
