@@ -4126,9 +4126,11 @@ export default function MapCityMap() {
                       (m) => String(m.id) === String(notificacao.lugar_id)
                     );
                     if (marker) {
-                      setSelectedMarker(marker);
-                      setIsViewModalVisible(true);
+                      // Forçar fechamento do modal antes de abrir outro
+                      setIsViewModalVisible(false);
                       setTimeout(() => {
+                        setSelectedMarker(marker);
+                        setIsViewModalVisible(true);
                         if (window.mapInstance && marker.lat && marker.lng) {
                           window.mapInstance.setView(
                             [marker.lat, marker.lng],
@@ -4136,7 +4138,7 @@ export default function MapCityMap() {
                             { animate: true }
                           );
                         }
-                      }, 200);
+                      }, 100);
                     }
                   }}
                 >
