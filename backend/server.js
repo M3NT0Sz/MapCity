@@ -2,6 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
 const ValidadorDocumento = require("./validador-documento");
+const jwt = require("jsonwebtoken");
+const JWT_SECRET = process.env.JWT_SECRET || "segredo_super_secreto";
 const db = require("./database");
 const app = express();
 app.use(cors());
@@ -84,26 +86,18 @@ app.put("/admin/areas/:areaId/rejeitar", async (req, res) => {
 // Middleware para autenticação de ONG ou admin (token_simulado_ID)
 async function autenticarONGouAdmin(req, res, next) {
   const auth = req.headers["authorization"];
-  if (!auth || !auth.startsWith("Bearer token_simulado_")) {
+  if (!auth || !auth.startsWith("Bearer ")) {
     return res.status(401).json({ error: "Não autenticado" });
   }
-  // Extrai o ID do token simulado: token_simulado_123456789
   const token = auth.replace("Bearer ", "").trim();
-  const partes = token.split("_");
-  const usuarioId = Number(partes[2]);
-  if (!usuarioId) {
-    return res.status(401).json({ error: "Token inválido" });
-  }
-  req.usuarioId = usuarioId;
   try {
-    const usuario = await db.buscarUm("SELECT * FROM usuarios WHERE id = ?", [
-      usuarioId,
-    ]);
-    req.isAdmin = usuario && usuario.tipo === "admin";
+    const payload = jwt.verify(token, JWT_SECRET);
+    req.usuarioId = payload.id;
+    req.isAdmin = payload.tipo === "admin";
+    next();
   } catch (e) {
-    req.isAdmin = false;
+    return res.status(401).json({ error: "Token JWT inválido" });
   }
-  next();
 }
 
 // DELETE /areas/:id - excluir área de responsabilidade (ONG ou admin)
@@ -161,39 +155,6 @@ app.delete("/areas/:id", autenticarONGouAdmin, async (req, res) => {
     res
       .status(500)
       .json({ error: "Erro ao excluir área", details: error.message });
-  }
-});
-
-// PUT /denuncias/:id/aceitar - aceita uma denúncia
-app.put("/denuncias/:id/aceitar", async (req, res) => {
-  const { id } = req.params;
-  const { observacoes } = req.body;
-  try {
-    // Atualiza status da denúncia
-    const result = await db.executarUpdate(
-      "UPDATE denuncias SET status = 'aceita', observacoes = ? , processado_em = NOW() WHERE id = ?",
-      [observacoes || null, id]
-    );
-    if (result.affectedRows > 0) {
-      // Buscar denúncia para pegar o marcador_id
-      const denuncia = await db.buscarUm(
-        "SELECT marcador_id FROM denuncias WHERE id = ?",
-        [id]
-      );
-      if (denuncia && denuncia.marcador_id) {
-        // Deletar o marcador denunciado
-        await db.executarUpdate("DELETE FROM lugares WHERE id = ?", [
-          denuncia.marcador_id,
-        ]);
-      }
-      res.json({ success: true, id });
-    } else {
-      res.status(404).json({ error: "Denúncia não encontrada" });
-    }
-  } catch (error) {
-    res
-      .status(500)
-      .json({ error: "Erro ao aceitar denúncia", details: error.message });
   }
 });
 
@@ -265,12 +226,7 @@ app.put("/notificacoes/:id/lida", async (req, res) => {
       res.status(404).json({ error: "Notificação não encontrada" });
     }
   } catch (error) {
-    res
-      .status(500)
-      .json({
-        error: "Erro ao marcar notificação como lida",
-        details: error.message,
-      });
+    res.status(500).json({ error: "Erro ao marcar notificação como lida", details: error.message });
   }
 });
 
