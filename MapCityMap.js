@@ -750,7 +750,9 @@ function SimpleMapView({
       }}
     >
       <div
-        ref={mapRef}
+        ref={el => {
+          mapRef.current = el;
+        }}
         style={{
           width: "100%",
           height: "100%",
@@ -782,6 +784,37 @@ function SimpleMapView({
 
 // Componente principal
 export default function MapCityMap() {
+  // Estado para expandir/retrair filtros
+  const [filtrosAbertos, setFiltrosAbertos] = useState(true);
+
+  // Estado dos marcadores deve vir antes do filtro
+  const [markers, setMarkers] = useState([]);
+
+
+  // Filtros para marcadores no mapa
+  const [filtroTipo, setFiltroTipo] = useState('Todos');
+  const [filtroResolvido, setFiltroResolvido] = useState(''); // '', 'sim', 'nao'
+  const [filtroDataInicio, setFiltroDataInicio] = useState('');
+  const [filtroDataFim, setFiltroDataFim] = useState('');
+
+  // Filtra os marcadores conforme filtros selecionados
+  const marcadoresFiltrados = markers.filter((m) => {
+    if (filtroTipo && filtroTipo !== 'Todos' && m.type !== filtroTipo) return false;
+    if (filtroResolvido === 'sim' && !m.resolved) return false;
+    if (filtroResolvido === 'nao' && m.resolved) return false;
+    if (filtroDataInicio) {
+      const dataCriado = new Date(m.createdAt || m.criado_em);
+      const dataInicio = new Date(filtroDataInicio);
+      if (dataCriado < dataInicio) return false;
+    }
+    if (filtroDataFim) {
+      const dataCriado = new Date(m.createdAt || m.criado_em);
+      const dataFim = new Date(filtroDataFim);
+      if (dataCriado > dataFim) return false;
+    }
+    return true;
+  });
+
   // Lista de usuários para busca de nome da ONG pelo ong_id
 
   // Estado para erro de imagem no carrossel
@@ -793,7 +826,6 @@ export default function MapCityMap() {
       // Usuário logado
     }
   }, [estaLogado, usuario]);
-  const [markers, setMarkers] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isViewModalVisible, setIsViewModalVisible] = useState(false);
   const [clickPosition, setClickPosition] = useState(null);
@@ -2170,7 +2202,7 @@ export default function MapCityMap() {
         backgroundColor: modernTheme.colors.background,
       }}
     >
-      {/* Header Moderno */}
+  {/* Header Moderno */}
       <View
         style={{
           backgroundColor: modernTheme.colors.surface,
@@ -2227,36 +2259,265 @@ export default function MapCityMap() {
           )}
         </View>
 
+        {/* Filtros de marcadores */}
+        {/* Botão/seta para expandir/retrair filtros */}
+        <View style={{ width: '100%', alignItems: 'center', marginTop: 8, marginBottom: filtrosAbertos ? 0 : 18, zIndex: 10 }}>
+          <TouchableOpacity
+            onPress={() => setFiltrosAbertos((v) => !v)}
+            style={{
+              backgroundColor: modernTheme.colors.surface,
+              borderRadius: 20,
+              borderWidth: 1.5,
+              borderColor: modernTheme.colors.border,
+              padding: 6,
+              boxShadow: Platform.OS === 'web' ? modernTheme.shadows.sm : undefined,
+              marginBottom: filtrosAbertos ? -12 : 0,
+              transition: 'margin-bottom 0.3s',
+            }}
+          >
+            <span
+              style={{
+                display: 'inline-block',
+                transition: 'transform 0.3s',
+                transform: filtrosAbertos ? 'rotate(180deg)' : 'rotate(0deg)',
+                fontSize: 28,
+                color: modernTheme.colors.primary,
+                userSelect: 'none',
+                lineHeight: 1,
+              }}
+            >
+              ▼
+            </span>
+          </TouchableOpacity>
+        </View>
+        {/* Painel de filtros expansível */}
+        <View
+          style={{
+            maxHeight: filtrosAbertos ? 500 : 0,
+            overflow: 'hidden',
+            opacity: filtrosAbertos ? 1 : 0,
+            marginBottom: filtrosAbertos ? 12 : 0,
+            marginTop: filtrosAbertos ? 0 : -24,
+            transition: 'all 0.35s cubic-bezier(.4,0,.2,1)',
+          }}
+        >
+          <View style={{
+            margin: 24,
+            marginBottom: 0,
+            backgroundColor: modernTheme.colors.background,
+            borderRadius: 18,
+            padding: 20,
+            borderWidth: 0,
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: 20,
+            alignItems: 'center',
+            boxShadow: Platform.OS === 'web' ? modernTheme.shadows.md : undefined,
+            overflowX: Platform.OS === 'web' ? 'auto' : undefined,
+            border: Platform.OS === 'web' ? `1.5px solid ${modernTheme.colors.border}` : undefined,
+          }}>
+          {/* Tipo */}
+  <View style={{ flex: 1, minWidth: 180, marginRight: 8 }}>
+            <Text style={{ fontSize: 13, color: '#374151', marginBottom: 4, fontWeight: 'bold', letterSpacing: 0.2 }}>Tipo</Text>
+            {Platform.OS === 'web' ? (
+              <select
+                value={filtroTipo}
+                onChange={e => setFiltroTipo(e.target.value)}
+                style={{
+                  height: 44,
+                  width: '100%',
+                  maxWidth: 320,
+                  minWidth: 180,
+                  borderRadius: 12,
+                  border: `1.5px solid ${modernTheme.colors.border}`,
+                  padding: '0 18px',
+                  fontSize: 17,
+                  backgroundColor: modernTheme.colors.surface,
+                  color: modernTheme.colors.text,
+                  marginBottom: 0,
+                  outline: 'none',
+                  boxShadow: Platform.OS === 'web' ? modernTheme.shadows.sm : undefined,
+                  transition: 'border 0.2s, box-shadow 0.2s',
+                  cursor: 'pointer',
+                  flexGrow: 1,
+                }}
+                onFocus={e => e.target.style.border = '1.5px solid #2563eb'}
+                onBlur={e => e.target.style.border = '1px solid #d1d5db'}
+              >
+                <option value="Todos">Todos</option>
+                <option value="lixo">Lixo</option>
+                <option value="buraco">Buraco</option>
+                <option value="iluminacao">Iluminação</option>
+                <option value="outro">Outro</option>
+              </select>
+            ) : (
+              <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap', marginBottom: 0 }}>
+                {[{ value: 'Todos', label: 'Todos' }, { value: 'lixo', label: 'Lixo' }, { value: 'buraco', label: 'Buraco' }, { value: 'iluminacao', label: 'Iluminação' }, { value: 'outro', label: 'Outro' }].map(opt => (
+                  <TouchableOpacity
+                    key={opt.value}
+                    onPress={() => setFiltroTipo(opt.value)}
+                    style={{
+                      backgroundColor: filtroTipo === opt.value ? modernTheme.colors.primary : modernTheme.colors.surface,
+                      borderRadius: 10,
+                      paddingHorizontal: 16,
+                      paddingVertical: 9,
+                      marginRight: 0,
+                      marginBottom: 4,
+                      borderWidth: filtroTipo === opt.value ? 2 : 1,
+                      borderColor: filtroTipo === opt.value ? modernTheme.colors.primary : modernTheme.colors.border,
+                      shadowColor: filtroTipo === opt.value ? modernTheme.colors.primary : undefined,
+                      shadowOpacity: filtroTipo === opt.value ? 0.12 : 0,
+                    }}
+                  >
+                    <Text style={{ color: filtroTipo === opt.value ? '#fff' : '#374151', fontWeight: filtroTipo === opt.value ? 'bold' : '500' }}>{opt.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+          {/* Status */}
+  <View style={{ flexDirection: 'column', minWidth: 120, marginRight: 8 }}>
+            <Text style={{ fontSize: 13, color: '#374151', marginBottom: 4, fontWeight: 'bold', letterSpacing: 0.2 }}>Status</Text>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity onPress={() => setFiltroResolvido('')} style={{
+                backgroundColor: filtroResolvido === '' ? modernTheme.colors.primary : modernTheme.colors.surface,
+                borderRadius: 10, paddingHorizontal: 16, paddingVertical: 9, marginRight: 0,
+                borderWidth: filtroResolvido === '' ? 2 : 1,
+                borderColor: filtroResolvido === '' ? modernTheme.colors.primary : modernTheme.colors.border,
+              }}>
+                <Text style={{ color: filtroResolvido === '' ? '#fff' : '#374151', fontWeight: filtroResolvido === '' ? 'bold' : '500' }}>Todos</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setFiltroResolvido('sim')} style={{
+                backgroundColor: filtroResolvido === 'sim' ? modernTheme.colors.success : modernTheme.colors.surface,
+                borderRadius: 10, paddingHorizontal: 16, paddingVertical: 9, marginRight: 0,
+                borderWidth: filtroResolvido === 'sim' ? 2 : 1,
+                borderColor: filtroResolvido === 'sim' ? modernTheme.colors.success : modernTheme.colors.border,
+              }}>
+                <Text style={{ color: filtroResolvido === 'sim' ? '#fff' : '#374151', fontWeight: filtroResolvido === 'sim' ? 'bold' : '500' }}>Resolvido</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setFiltroResolvido('nao')} style={{
+                backgroundColor: filtroResolvido === 'nao' ? modernTheme.colors.warning : modernTheme.colors.surface,
+                borderRadius: 10, paddingHorizontal: 16, paddingVertical: 9, marginRight: 0,
+                borderWidth: filtroResolvido === 'nao' ? 2 : 1,
+                borderColor: filtroResolvido === 'nao' ? modernTheme.colors.warning : modernTheme.colors.border,
+              }}>
+                <Text style={{ color: filtroResolvido === 'nao' ? '#fff' : '#374151', fontWeight: filtroResolvido === 'nao' ? 'bold' : '500' }}>Pendente</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+          {/* Data início */}
+  <View style={{ flex: 1, minWidth: 150, marginRight: 8 }}>
+            <Text style={{ fontSize: 13, color: '#374151', marginBottom: 4, fontWeight: 'bold', letterSpacing: 0.2 }}>Data inicial</Text>
+            {Platform.OS === 'web' ? (
+              <input
+                type="date"
+                value={filtroDataInicio}
+                onChange={e => setFiltroDataInicio(e.target.value)}
+                style={{
+                  padding: '0 18px',
+                  fontSize: 17,
+                  border: `1.5px solid ${modernTheme.colors.border}`,
+                  borderRadius: 12,
+                  backgroundColor: modernTheme.colors.surface,
+                  width: '100%',
+                  maxWidth: 220,
+                  minWidth: 150,
+                  marginBottom: 0,
+                  height: 44,
+                  outline: 'none',
+                  boxShadow: Platform.OS === 'web' ? modernTheme.shadows.sm : undefined,
+                  transition: 'border 0.2s, box-shadow 0.2s',
+                  flexGrow: 1,
+                }}
+                onFocus={e => e.target.style.border = '1.5px solid #2563eb'}
+                onBlur={e => e.target.style.border = '1px solid #d1d5db'}
+              />
+            ) : (
+              <TextInput
+                placeholder="AAAA-MM-DD"
+                value={filtroDataInicio}
+                onChangeText={setFiltroDataInicio}
+                style={{ paddingHorizontal: 16, fontSize: 16, borderWidth: 1.5, borderColor: modernTheme.colors.border, borderRadius: 12, backgroundColor: modernTheme.colors.surface, width: '100%', marginBottom: 0, height: 44 }}
+                keyboardType="numeric"
+              />
+            )}
+          </View>
+          {/* Data fim */}
+  <View style={{ flex: 1, minWidth: 150 }}>
+            <Text style={{ fontSize: 13, color: '#374151', marginBottom: 4, fontWeight: 'bold', letterSpacing: 0.2 }}>Data final</Text>
+            {Platform.OS === 'web' ? (
+              <input
+                type="date"
+                value={filtroDataFim}
+                onChange={e => setFiltroDataFim(e.target.value)}
+                style={{
+                  padding: '0 18px',
+                  fontSize: 17,
+                  border: `1.5px solid ${modernTheme.colors.border}`,
+                  borderRadius: 12,
+                  backgroundColor: modernTheme.colors.surface,
+                  width: '100%',
+                  maxWidth: 220,
+                  minWidth: 150,
+                  marginBottom: 0,
+                  height: 44,
+                  outline: 'none',
+                  boxShadow: Platform.OS === 'web' ? modernTheme.shadows.sm : undefined,
+                  transition: 'border 0.2s, box-shadow 0.2s',
+                  flexGrow: 1,
+                }}
+                onFocus={e => e.target.style.border = '1.5px solid #2563eb'}
+                onBlur={e => e.target.style.border = '1px solid #d1d5db'}
+              />
+            ) : (
+              <TextInput
+                placeholder="AAAA-MM-DD"
+                value={filtroDataFim}
+                onChangeText={setFiltroDataFim}
+                style={{ paddingHorizontal: 16, fontSize: 16, borderWidth: 1.5, borderColor: modernTheme.colors.border, borderRadius: 12, backgroundColor: modernTheme.colors.surface, width: '100%', marginBottom: 0, height: 44 }}
+                keyboardType="numeric"
+              />
+            )}
+          </View>
+        </View>
         {/* Estatísticas */}
         <View
           style={{
             flexDirection: "row",
-            gap: modernTheme.spacing.sm,
+            gap: 18,
+            marginTop: 18,
+            marginBottom: 8,
           }}
         >
           <View
             style={{
               flex: 1,
-              backgroundColor: modernTheme.colors.primary + "10",
-              padding: modernTheme.spacing.sm,
-              borderRadius: modernTheme.borderRadius.md,
-              borderLeftWidth: 3,
-              borderLeftColor: modernTheme.colors.primary,
+              backgroundColor: modernTheme.colors.surface,
+              padding: 18,
+              borderRadius: 16,
+              borderBottomWidth: 3,
+              borderBottomColor: modernTheme.colors.primary,
+              display: 'flex',
+              alignItems: 'flex-start',
+              boxShadow: Platform.OS === 'web' ? modernTheme.shadows.sm : undefined,
+              minHeight: 60,
             }}
           >
             <Text
               style={{
-                fontSize: 20,
+                fontSize: 28,
                 fontWeight: "bold",
                 color: modernTheme.colors.primary,
+                marginBottom: 2,
               }}
             >
-              {markers.length}
+              {marcadoresFiltrados.length}
             </Text>
             <Text
               style={{
-                fontSize: 12,
+                fontSize: 14,
                 color: modernTheme.colors.textSecondary,
+                fontWeight: 500,
               }}
             >
               Problemas
@@ -2266,26 +2527,32 @@ export default function MapCityMap() {
           <View
             style={{
               flex: 1,
-              backgroundColor: modernTheme.colors.success + "10",
-              padding: modernTheme.spacing.sm,
-              borderRadius: modernTheme.borderRadius.md,
-              borderLeftWidth: 3,
-              borderLeftColor: modernTheme.colors.success,
+              backgroundColor: modernTheme.colors.surface,
+              padding: 18,
+              borderRadius: 16,
+              borderBottomWidth: 3,
+              borderBottomColor: modernTheme.colors.success,
+              display: 'flex',
+              alignItems: 'flex-start',
+              boxShadow: Platform.OS === 'web' ? modernTheme.shadows.sm : undefined,
+              minHeight: 60,
             }}
           >
             <Text
               style={{
-                fontSize: 20,
+                fontSize: 28,
                 fontWeight: "bold",
                 color: modernTheme.colors.success,
+                marginBottom: 2,
               }}
             >
-              {markers.filter((m) => m.resolved).length}
+              {marcadoresFiltrados.filter((m) => m.resolved).length}
             </Text>
             <Text
               style={{
-                fontSize: 12,
+                fontSize: 14,
                 color: modernTheme.colors.textSecondary,
+                fontWeight: 500,
               }}
             >
               Resolvidos
@@ -2295,26 +2562,32 @@ export default function MapCityMap() {
           <View
             style={{
               flex: 1,
-              backgroundColor: modernTheme.colors.secondary + "10",
-              padding: modernTheme.spacing.sm,
-              borderRadius: modernTheme.borderRadius.md,
-              borderLeftWidth: 3,
-              borderLeftColor: modernTheme.colors.secondary,
+              backgroundColor: modernTheme.colors.surface,
+              padding: 18,
+              borderRadius: 16,
+              borderBottomWidth: 3,
+              borderBottomColor: modernTheme.colors.secondary,
+              display: 'flex',
+              alignItems: 'flex-start',
+              boxShadow: Platform.OS === 'web' ? modernTheme.shadows.sm : undefined,
+              minHeight: 60,
             }}
           >
             <Text
               style={{
-                fontSize: 20,
+                fontSize: 28,
                 fontWeight: "bold",
                 color: modernTheme.colors.secondary,
+                marginBottom: 2,
               }}
             >
               {areas.length}
             </Text>
             <Text
               style={{
-                fontSize: 12,
+                fontSize: 14,
                 color: modernTheme.colors.textSecondary,
+                fontWeight: 500,
               }}
             >
               Áreas
@@ -2501,6 +2774,7 @@ export default function MapCityMap() {
             )}
           </View>
         )}
+        </View>
       </View>
 
       {/* Status de desenho de área */}
@@ -2546,7 +2820,7 @@ export default function MapCityMap() {
         <SimpleMapView
           onMapClick={handleMapClick}
           onMarkerClick={handleMarkerClick}
-          markers={markers}
+          markers={marcadoresFiltrados}
           areas={areas}
           areaPoints={areaPoints}
           areaDrawingMode={areaDrawingMode}

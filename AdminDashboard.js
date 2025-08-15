@@ -1243,6 +1243,7 @@ const AdminDashboard = ({
           gap: 16,
           alignItems: 'center',
           boxShadow: Platform.OS === 'web' ? '0 2px 8px rgba(0,0,0,0.06)' : undefined,
+          overflowX: Platform.OS === 'web' ? 'auto' : undefined,
         }}>
           {/* Tipo */}
           <View style={{ flex: 1, minWidth: 120 }}>
@@ -1252,19 +1253,22 @@ const AdminDashboard = ({
                 value={filtroTipo}
                 onChange={e => setFiltroTipo(e.target.value)}
                 style={{
-                  height: 38,
+                  height: 40,
                   width: '100%',
+                  maxWidth: 320,
+                  minWidth: 180,
                   borderRadius: 8,
                   border: '1px solid #d1d5db',
-                  padding: '0 12px',
-                  fontSize: 15,
+                  padding: '0 16px',
+                  fontSize: 16,
                   backgroundColor: '#f9fafb',
                   color: '#222',
                   marginBottom: 0,
                   outline: 'none',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                  boxShadow: '0 1.5px 3px rgba(0,0,0,0.04)',
                   transition: 'border 0.2s, box-shadow 0.2s',
                   cursor: 'pointer',
+                  flexGrow: 1,
                 }}
                 onFocus={e => e.target.style.border = '1.5px solid #2563eb'}
                 onBlur={e => e.target.style.border = '1px solid #d1d5db'}
@@ -1339,17 +1343,20 @@ const AdminDashboard = ({
                 value={filtroDataInicio}
                 onChange={e => setFiltroDataInicio(e.target.value)}
                 style={{
-                  padding: '0 12px',
-                  fontSize: 15,
+                  padding: '0 16px',
+                  fontSize: 16,
                   border: '1px solid #d1d5db',
                   borderRadius: 8,
                   backgroundColor: '#f9fafb',
                   width: '100%',
+                  maxWidth: 220,
+                  minWidth: 150,
                   marginBottom: 0,
-                  height: 38,
+                  height: 40,
                   outline: 'none',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                  boxShadow: '0 1.5px 3px rgba(0,0,0,0.04)',
                   transition: 'border 0.2s, box-shadow 0.2s',
+                  flexGrow: 1,
                 }}
                 onFocus={e => e.target.style.border = '1.5px solid #2563eb'}
                 onBlur={e => e.target.style.border = '1px solid #d1d5db'}
@@ -1373,17 +1380,20 @@ const AdminDashboard = ({
                 value={filtroDataFim}
                 onChange={e => setFiltroDataFim(e.target.value)}
                 style={{
-                  padding: '0 12px',
-                  fontSize: 15,
+                  padding: '0 16px',
+                  fontSize: 16,
                   border: '1px solid #d1d5db',
                   borderRadius: 8,
                   backgroundColor: '#f9fafb',
                   width: '100%',
+                  maxWidth: 220,
+                  minWidth: 150,
                   marginBottom: 0,
-                  height: 38,
+                  height: 40,
                   outline: 'none',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                  boxShadow: '0 1.5px 3px rgba(0,0,0,0.04)',
                   transition: 'border 0.2s, box-shadow 0.2s',
+                  flexGrow: 1,
                 }}
                 onFocus={e => e.target.style.border = '1.5px solid #2563eb'}
                 onBlur={e => e.target.style.border = '1px solid #d1d5db'}
