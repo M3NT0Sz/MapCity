@@ -1442,14 +1442,15 @@ const AdminDashboard = ({
               Localização:{" "}
               {typeof marcador.latitude === "number" &&
               typeof marcador.longitude === "number"
-                ? `${marcador.latitude.toFixed(6)}, ${marcador.longitude.toFixed(
-                    6
-                  )}`
+                ? `${marcador.latitude.toFixed(6)}, ${marcador.longitude.toFixed(6)}`
                 : `${marcador.latitude || "N/A"}, ${marcador.longitude || "N/A"}`}
             </Text>
             <Text style={styles.cardText}>
-              Criado em: {new Date(marcador.criado_em).toLocaleDateString()}
+              Criado em: {marcador.criado_em && !isNaN(new Date(marcador.criado_em).getTime())
+                ? new Date(marcador.criado_em).toLocaleDateString()
+                : 'Data inválida'}
             </Text>
+            {/* Removido qualquer valor numérico solto após a data */}
             {marcador.resolvido && marcador.resolvido_em && (
               <Text style={styles.cardTextSuccess}>
                 Resolvido em:{" "}
