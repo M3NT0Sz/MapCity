@@ -1,16 +1,30 @@
-# 🗺️ MapCity - Plataf### **🔐 Sistema de Autenticação**
-- **👤 Usuários**: Podem criar e visualizar denúncias (CPF obrigatório)
-- **🏢 ONGs**: Gerenciam áreas de responsabilidade e resolvem problemas (CNPJ obrigatório)
-- **⚙️ Administradores**: Controle total do sistema e aprovação de áreas
-- **🔒 Validação de Documentos**: Sistema completo de validação CPF/CNPJ em tempo real Inteligente de Gestão Urbana
+
+# 🏆 MapCity — Projeto Vencedor do Hackathon Tech4Health 2025 (Fatec Presidente Prudente)
+
+<div align="center">
+  <img src="https://img.shields.io/badge/Status-Produção-green" />
+  <img src="https://img.shields.io/badge/Platform-Web%20%7C%20iOS%20%7C%20Android-blue" />
+  <img src="https://img.shields.io/badge/React%20Native-0.79.3-blue" />
+  <img src="https://img.shields.io/badge/Expo-53.0.11-black" />
+  <img src="https://img.shields.io/badge/Node.js-Backend-green" />
+</div>
+
+## 🏅 Sobre o Reconhecimento
+
+O **MapCity** foi o grande destaque e projeto vencedor do **Hackathon Tech4Health 2025**, promovido pela Fatec Presidente Prudente no âmbito do curso de Análise e Desenvolvimento de Sistemas (AMS). O evento desafiou equipes a criarem soluções tecnológicas inovadoras para a área da saúde e cidades inteligentes, alinhadas aos pilares ESG (ambiental, social e governança).
+
+Desenvolvido por **João Luiz Souza Pereira** e **Matheus Mendes dos Santos**, o MapCity se destacou por propor o **mapeamento colaborativo de situações irregulares nas cidades** — como falhas na iluminação pública, acúmulo de lixo, entulho e buracos nas vias — unindo tecnologia e comunidade para transformar os espaços urbanos em ambientes mais limpos e seguros.
+
+> “Participar do Tech4Health foi uma experiência incrível, onde consegui aprender diversas coisas, como identificar a área em que tenho mais domínio e desenvolver a habilidade de trabalhar em equipe. Esse hackathon foi muito importante para mim, pois acredito que a ideia que tivemos pode realmente ajudar muitas pessoas, e por isso quero continuar com o desenvolvimento do projeto, que pode contribuir para tornar a cidade um lugar melhor e mais limpo.”  
+> — Matheus Mendes dos Santos, coautor do MapCity
+
+O projeto foi avaliado por uma banca de professores e reconhecido pela criatividade, aplicabilidade e impacto social, tornando-se referência de inovação acadêmica na Fatec Presidente Prudente.
+
+Saiba mais: [Notícia oficial do prêmio Tech4Health](https://mail.fatecpp.edu.br/noticias/ads-ams-na-pratica-estudantes-encerram-o-desafio-tech4health-com-desenvolvimento-de-solucoes-e-apresentacoes-finais)
 
 MapCity é uma aplicação web/mobile desenvolvida com **React Native + Expo** que permite aos cidadãos reportar problemas urbanos de forma interativa através de um mapa. O sistema possui **detecção automática de ONGs responsáveis** por área geográfica e sistema completo de autenticação multi-nível.
 
-![MapCity Preview](https://img.shields.io/badge/Status-Produção-green)
-![Platform](https://img.shields.io/badge/Platform-Web%20%7C%20iOS%20%7C%20Android-blue)
-![React Native](https://img.shields.io/badge/React%20Native-0.79.3-blue)
-![Expo](https://img.shields.io/badge/Expo-53.0.11-black)
-![Node.js](https://img.shields.io/badge/Node.js-Backend-green)
+---
 
 ## ✨ Funcionalidades
 
