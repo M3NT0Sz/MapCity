@@ -1,5 +1,5 @@
 
-# 🏆 MapCity — Projeto Vencedor do Hackathon Tech4Health 2025 (Faculdade de Presidente Prudente  - FATEC)
+# 🏆 MapCity — Projeto Vencedor do Hackathon Tech4Health 2025 (Faculdade de Tecnologia de Presidente Prudente  - FATEC)
 
 <div align="center">
   <img src="https://img.shields.io/badge/Status-Produção-green" />
@@ -11,7 +11,7 @@
 
 ## 🏅 Sobre o Reconhecimento
 
-O **MapCity** foi o grande destaque e projeto vencedor do **Hackathon Tech4Health 2025**, promovido pela Faculdade de Presidente Prudente - FATEC no âmbito do curso de Análise e Desenvolvimento de Sistemas (AMS). O evento desafiou equipes a criarem soluções tecnológicas inovadoras para a área da saúde e cidades inteligentes, alinhadas aos pilares ESG (ambiental, social e governança).
+O **MapCity** foi o grande destaque e projeto vencedor do **Hackathon Tech4Health 2025**, promovido pela Faculdade de Tecnologia de Presidente Prudente - FATEC no âmbito do curso de Análise e Desenvolvimento de Sistemas (AMS). O evento desafiou equipes a criarem soluções tecnológicas inovadoras para a área da saúde e cidades inteligentes, alinhadas aos pilares ESG (ambiental, social e governança).
 
 Desenvolvido por **João Luiz Souza Pereira** e **Matheus Mendes dos Santos**, o MapCity se destacou por propor o **mapeamento colaborativo de situações irregulares nas cidades** — como falhas na iluminação pública, acúmulo de lixo, entulho e buracos nas vias — unindo tecnologia e comunidade para transformar os espaços urbanos em ambientes mais limpos e seguros.
 
